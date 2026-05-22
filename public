@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Bot PMU"/>
+<meta name="theme-color" content="#06070a"/>
+<title>Bot PMU · CDCH</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+:root {
+  --bg:#06070a; --sf:#0a0c14; --card:#0e1120; --border:#181e30;
+  --gold:#c9a54a; --goldg:rgba(201,165,74,.13); --goldd:#5a4418;
+  --green:#22b566; --greenb:#061810;
+  --orange:#cc6e28; --orangeb:#180e06;
+  --red:#c03838; --redb:#180606;
+  --blue:#3a8fd4; --blueb:#060f1a;
+  --text:#ddd8cc; --dim:#8890a8; --muted:#4a5068;
+  --serif:'Cormorant Garamond',serif;
+  --sans:'DM Sans',sans-serif;
+  --mono:'JetBrains Mono',monospace;
+  --st:env(safe-area-inset-top,0px);
+  --sb:env(safe-area-inset-bottom,0px);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg)}
+body{color:var(--text);font-family:var(--sans);font-size:15px;min-height:100dvh;-webkit-text-size-adjust:100%;overscroll-behavior:none;padding-bottom:calc(var(--sb)+72px)}
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:var(--sf)}::-webkit-scrollbar-thumb{background:var(--goldd);border-radius:2px}
+button{cursor:pointer;font-family:var(--sans);border:none;outline:none;-webkit-tap-highlight-color:transparent;transition:all .15s}
+input,select{outline:none;font-family:var(--sans);-webkit-appearance:none}
+
+/* ── BOTTOM TABS ── */
+.tabs-bar {
+  position:fixed;bottom:0;left:0;right:0;
+  background:rgba(6,7,10,.96);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-top:1px solid var(--border);
+  display:flex;
+  padding:10px 0 calc(var(--sb) + 10px);
+  z-index:100;
+}
+.tab-btn {
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  background:transparent;color:var(--muted);font-size:10px;font-weight:500;padding:2px 0;
+}
+.tab-btn.on { color:var(--gold); }
+.tab-btn .ico { font-size:22px;line-height:1; }
+
+/* ── PAGES ── */
+.page { display:none; padding:calc(var(--st)+16px) 16px 16px; }
+.page.on { display:block; animation:fadeUp .25s ease; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+/* ── HEADER ── */
+.hdr {
+  display:flex;justify-content:space-between;align-items:flex-end;
+  padding-bottom:18px;border-bottom:1px solid var(--border);margin-bottom:20px;
+}
+.hdr-logo { font-family:var(--serif);font-size:32px;font-weight:700;line-height:1; }
+.hdr-logo span { color:var(--gold); }
+.hdr-eyebrow { font-family:var(--mono);font-size:9px;color:var(--gold);letter-spacing:4px;text-transform:uppercase;margin-bottom:4px; }
+
+/* ── CALENDRIER ── */
+.cal-wrap { background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px; }
+.cal-nav-row { display:flex;align-items:center;justify-content:space-between;margin-bottom:12px; }
+.cal-nav { background:var(--sf);border:1px solid var(--border);color:var(--gold);font-size:20px;padding:6px 14px;border-radius:8px; }
+.cal-nav:active { background:var(--card); }
+.cal-month { font-family:var(--serif);font-size:20px;font-weight:700; }
+.cal-grid { display:grid;grid-template-columns:repeat(7,1fr);gap:4px; }
+.cal-dn { text-align:center;font-size:10px;color:var(--muted);padding:4px 0;font-weight:600; }
+.cal-d {
+  aspect-ratio:1;display:flex;align-items:center;justify-content:center;
+  border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;
+  border:1px solid transparent;background:transparent;color:var(--dim);
+  transition:all .12s;
+}
+.cal-d:active { background:var(--sf); }
+.cal-d.today { border-color:var(--gold);color:var(--gold); }
+.cal-d.sel { background:var(--gold)!important;color:#000!important;font-weight:700; }
+.cal-d.past { opacity:.3;cursor:default; }
+.cal-d.empty { cursor:default; }
+
+/* ── BUTTONS ── */
+.btn {
+  width:100%;padding:12px 16px;border-radius:9px;font-weight:600;font-size:14px;
+  display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;
+}
+.btn:active { transform:scale(.98);opacity:.9; }
+.btn:disabled { opacity:.4;cursor:not-allowed;transform:none; }
+.btn-gold { background:var(--gold);color:#000; }
+.btn-green { background:var(--green);color:#000; }
+.btn-blue { background:var(--blue);color:#000; }
+.btn-ghost { background:transparent;border:1px solid var(--border);color:var(--dim); }
+.btn-ghost:active { border-color:var(--gold);color:var(--gold); }
+.btn-sm { width:auto;padding:8px 14px;font-size:12px;margin-bottom:0; }
+
+/* ── SECTION TITLE ── */
+.stitle { font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:3px;text-transform:uppercase;margin:16px 0 10px; }
+
+/* ── CARDS ── */
+.card { background:var(--card);border:1px solid var(--border);border-radius:11px;padding:14px;margin-bottom:10px; }
+.chip { display:inline-flex;align-items:center;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600; }
+
+/* ── COURSE ROW ── */
+.crow {
+  display:flex;align-items:center;gap:10px;
+  padding:11px 13px;border-radius:9px;margin-bottom:6px;
+  background:var(--card);border:1px solid var(--border);
+  transition:border-color .15s;
+}
+.crow.jouable { border-left:3px solid var(--green); }
+.crow.jouable.checked { border-color:var(--green);background:rgba(34,181,102,.06); }
+.crow.prudence { border-left:3px solid var(--orange); }
+.crow.eviter { border-left:3px solid var(--red);opacity:.6; }
+.crow.eliminee { border-left:3px solid var(--muted);opacity:.4; }
+
+/* ── CHECKBOX ── */
+.cbox {
+  width:22px;height:22px;border-radius:6px;border:2px solid var(--border);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  background:var(--sf);transition:all .15s;cursor:pointer;
+}
+.cbox.on { background:var(--green);border-color:var(--green); }
+
+/* ── VERDICT MINI ── */
+.vmin { border-radius:6px;padding:4px 7px;text-align:center;flex-shrink:0;min-width:60px; }
+
+/* ── CHEVAL ── */
+.cheval-card { background:var(--card);border:1px solid var(--border);border-radius:9px;margin-bottom:7px;overflow:hidden; }
+.cheval-head { display:flex;align-items:center;gap:10px;padding:10px 13px;cursor:pointer; }
+.cheval-num { width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:14px;flex-shrink:0; }
+.cheval-pts { padding:8px 13px 10px;border-top:1px solid var(--border);background:var(--sf);display:flex;gap:5px;flex-wrap:wrap; }
+
+/* ── PBAR ── */
+.pbar { height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:5px; }
+.pbar-fill { height:100%;border-radius:2px;transition:width .4s ease; }
+
+/* ── LOG ── */
+.logbox { background:var(--sf);border:1px solid var(--border);border-radius:8px;padding:10px 13px;font-family:var(--mono);font-size:11px;color:var(--dim);margin:10px 0;line-height:1.5;min-height:36px; }
+
+/* ── BILAN ── */
+.stat2 { display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px; }
+.sbox { background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center; }
+.sval { font-family:var(--mono);font-size:26px;font-weight:700;line-height:1;margin-bottom:3px; }
+.slbl { font-size:11px;color:var(--muted); }
+.ssub { font-size:10px;color:var(--muted);margin-top:2px; }
+
+/* ── RESULT CARD ── */
+.rcard { background:var(--card);border:1px solid var(--border);border-radius:10px;padding:13px;margin-bottom:9px; }
+
+/* ── TOAST ── */
+.toast { position:fixed;bottom:calc(var(--sb)+80px);left:50%;transform:translateX(-50%) translateY(80px);background:var(--green);color:#000;font-weight:600;font-size:13px;padding:10px 20px;border-radius:20px;transition:transform .3s;z-index:999;white-space:nowrap;pointer-events:none; }
+.toast.on { transform:translateX(-50%) translateY(0); }
+
+/* ── INPUT ── */
+.inp { background:var(--sf);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px;font-size:14px;width:100%; }
+.inp:focus { border-color:var(--gold); }
+
+@keyframes spin { to{transform:rotate(360deg)} }
+.spin { display:inline-block;animation:spin .9s linear infinite; }
+.hidden { display:none!important; }
+.divider { height:1px;background:var(--border);margin:16px 0; }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════════════════════════════
+     ONGLET JEUX
+══════════════════════════════════════ -->
+<div class="page on" id="page-jeux">
+
+  <!-- Header -->
+  <div class="hdr">
+    <div>
+      <div class="hdr-eyebrow">CDCH · Système Expert</div>
+      <div class="hdr-logo">Bot <span>PMU</span></div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-family:var(--serif);font-size:22px;font-weight:700;color:var(--gold)" id="hdr-date">—</div>
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase" id="hdr-day">—</div>
+    </div>
+  </div>
+
+  <!-- ── ÉTAPE 1 : CALENDRIER ── -->
+  <div id="bloc-cal">
+    <div class="stitle">Choisir la date</div>
+    <div class="cal-wrap">
+      <div class="cal-nav-row">
+        <button class="cal-nav" onclick="calMove(-1)">‹</button>
+        <div class="cal-month" id="cal-label">—</div>
+        <button class="cal-nav" onclick="calMove(1)">›</button>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+    </div>
+    <button class="btn btn-gold" id="btn-valdate" onclick="validerDate()" disabled>
+      Valider la date →
+    </button>
+  </div>
+
+  <!-- ── ÉTAPE 2 : PROGRAMME + SCAN 1 ── -->
+  <div id="bloc-prog" class="hidden">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="retourCal()">← Calendrier</button>
+      <div style="font-family:var(--serif);font-size:18px;font-weight:700;color:var(--gold)" id="prog-date-label">—</div>
+    </div>
+
+    <div class="logbox" id="prog-log">En attente…</div>
+
+    <!-- Programme complet (avant scan) -->
+    <div id="prog-list" class="hidden">
+      <div class="stitle">Programme de trot du jour</div>
+      <div id="prog-courses"></div>
+      <button class="btn btn-gold" id="btn-scan1" onclick="lancerScan1()">
+        🔍 Scan 1 — Expert N°1 (Filtrer les courses jouables)
+      </button>
+    </div>
+  </div>
+
+  <!-- ── ÉTAPE 3 : RÉSULTATS SCAN 1 + CASES À COCHER ── -->
+  <div id="bloc-scan1" class="hidden">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <button class="btn btn-ghost btn-sm" onclick="retourProg()">← Programme</button>
+      <div style="font-size:13px;color:var(--muted)" id="scan1-summary">—</div>
+    </div>
+
+    <div class="stitle">Courses analysées — cochez les courses à analyser</div>
+    <div id="scan1-courses"></div>
+
+    <button class="btn btn-green" id="btn-scan2" onclick="lancerScan2()" disabled>
+      🔬 Scan 2 — Expert N°2 (Analyser les chevaux)
+    </button>
+  </div>
+
+  <!-- ── ÉTAPE 4 : RÉSULTATS SCAN 2 ── -->
+  <div id="bloc-scan2" class="hidden">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <button class="btn btn-ghost btn-sm" onclick="retourScan1()">← Courses</button>
+      <div style="font-size:13px;color:var(--muted)">Sélection des chevaux</div>
+    </div>
+    <div class="logbox" id="scan2-log">En attente…</div>
+    <div id="scan2-results"></div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════
+     ONGLET BILAN
+══════════════════════════════════════ -->
+<div class="page" id="page-bilan">
+  <div style="padding-top:calc(var(--st)+16px)">
+    <div class="hdr-eyebrow" style="margin-bottom:6px">Performance & Statistiques</div>
+    <div class="hdr-logo" style="margin-bottom:20px">Bilan <span>CDCH</span></div>
+    <div id="bilan-content"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     BARRE D'ONGLETS
+══════════════════════════════════════ -->
+<nav class="tabs-bar">
+  <button class="tab-btn on" onclick="goPage('jeux')" id="nav-jeux">
+    <span class="ico">🎯</span>Jeux
+  </button>
+  <button class="tab-btn" onclick="goPage('bilan')" id="nav-bilan">
+    <span class="ico">📊</span>Bilan
+  </button>
+</nav>
+
+<script>
+'use strict';
+
+// ══════════════════════════════════════════════════════
+//  CONFIG & CONSTANTES
+// ══════════════════════════════════════════════════════
+const BASE = window.location.origin;
+const MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+const MONTHS_S = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+const DAYS = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+
+// ══════════════════════════════════════════════════════
+//  ÉTAT GLOBAL
+// ══════════════════════════════════════════════════════
+const S = {
+  selDate: null,        // Date JS sélectionnée
+  calY: new Date().getFullYear(),
+  calM: new Date().getMonth(),
+  allCourses: [],       // Toutes les courses de trot
+  scoredCourses: [],    // Courses scorées par E1
+  checkedIds: new Set(),// IDs des courses cochées
+  e2Results: [],        // Résultats E2 par course
+};
+
+// ══════════════════════════════════════════════════════
+//  STORAGE
+// ══════════════════════════════════════════════════════
+const DB = 'botpmu_v5';
+const dbGet = () => { try { return JSON.parse(localStorage.getItem(DB)||'{"analyses":[]}'); } catch { return {analyses:[]}; } };
+const dbSet = d => { try { localStorage.setItem(DB, JSON.stringify(d)); } catch {} };
+const dbAdd = entry => { const d=dbGet(); d.analyses.unshift(entry); if(d.analyses.length>200) d.analyses.pop(); dbSet(d); };
+const dbUpd = (id,upd) => { const d=dbGet(); const i=d.analyses.findIndex(a=>a.id===id); if(i>=0) d.analyses[i]={...d.analyses[i],...upd}; dbSet(d); };
+
+// ══════════════════════════════════════════════════════
+//  NAVIGATION
+// ══════════════════════════════════════════════════════
+function goPage(name) {
+  ['jeux','bilan'].forEach(n => {
+    document.getElementById('page-'+n).classList.toggle('on', n===name);
+    document.getElementById('nav-'+n).classList.toggle('on', n===name);
+  });
+  window.scrollTo({top:0});
+  if (name==='bilan') renderBilan();
+}
+
+function showBloc(name) {
+  ['cal','prog','scan1','scan2'].forEach(b => {
+    document.getElementById('bloc-'+b).classList.toggle('hidden', b!==name);
+  });
+  window.scrollTo({top:0});
+}
+
+function retourCal()   { showBloc('cal'); }
+function retourProg()  { showBloc('prog'); }
+function retourScan1() { showBloc('scan1'); }
+
+// ══════════════════════════════════════════════════════
+//  CALENDRIER
+// ══════════════════════════════════════════════════════
+function renderCal() {
+  const {calY,calM} = S;
+  document.getElementById('cal-label').textContent = `${MONTHS[calM]} ${calY}`;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const first = new Date(calY,calM,1);
+  const last  = new Date(calY,calM+1,0);
+  const dow   = (first.getDay()+6)%7; // Lundi=0
+
+  let h = ['L','M','M','J','V','S','D'].map(d=>`<div class="cal-dn">${d}</div>`).join('');
+  for(let i=0;i<dow;i++) h+='<div class="cal-d empty"></div>';
+
+  for(let d=1;d<=last.getDate();d++){
+    const dt = new Date(calY,calM,d);
+    const isPast  = dt < today;
+    const isToday = dt.getTime()===today.getTime();
+    const isSel   = S.selDate && dt.getTime()===S.selDate.getTime();
+    const cls = [isPast?'past':'', isToday?'today':'', isSel?'sel':''].filter(Boolean).join(' ');
+    const click = isPast ? '' : `onclick="selDate(${calY},${calM},${d})"`;
+    h += `<div class="cal-d ${cls}" ${click}>${d}</div>`;
+  }
+  document.getElementById('cal-grid').innerHTML = h;
+}
+
+function calMove(dir) {
+  S.calM += dir;
+  if(S.calM<0){S.calM=11;S.calY--;}
+  if(S.calM>11){S.calM=0;S.calY++;}
+  renderCal();
+}
+
+function selDate(y,m,d) {
+  S.selDate = new Date(y,m,d);
+  renderCal();
+  document.getElementById('btn-valdate').disabled = false;
+}
+
+function fmtPMU(dt) {
+  return String(dt.getDate()).padStart(2,'0')+String(dt.getMonth()+1).padStart(2,'0')+dt.getFullYear();
+}
+function fmtFR(dt) {
+  return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear();
+}
+
+// ══════════════════════════════════════════════════════
+//  ÉTAPE 2 — Charger le programme
+// ══════════════════════════════════════════════════════
+async function validerDate() {
+  if(!S.selDate) return;
+  const d = S.selDate;
+  const label = fmtFR(d);
+
+  // Update header
+  document.getElementById('hdr-date').textContent = d.getDate()+' '+MONTHS_S[d.getMonth()];
+  document.getElementById('hdr-day').textContent = DAYS[d.getDay()];
+  document.getElementById('prog-date-label').textContent = label;
+
+  showBloc('prog');
+  setLog('prog','🌐 Récupération du programme PMU du '+label+'…','dim');
+  document.getElementById('prog-list').classList.add('hidden');
+
+  try {
+    const res = await fetch(`${BASE}/api/programme?date=${fmtPMU(d)}`);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const json = await res.json();
+    if(json.error) throw new Error(json.error);
+
+    const reunions = json?.programme?.reunions || [];
+    if(!reunions.length) throw new Error('Aucune réunion trouvée pour cette date.');
+
+    // Extraire toutes les courses de trot
+    S.allCourses = [];
+    for(const r of reunions){
+      const hippo = r.hippodrome?.libelleLong || r.hippodrome?.libelleCourt || '';
+      const rNum  = r.numOfficiel || r.numReunion || '?';
+      for(const c of (r.courses||[])){
+        const disc = (c.discipline||c.specialite||'').toUpperCase();
+        if(!disc.includes('ATTELE')&&!disc.includes('MONTE')&&!disc.includes('TROT')) continue;
+        const cond  = c.categorieParticularite||c.conditions||'';
+        const heure = c.heureDepart?String(c.heureDepart).replace(/(\d{2})(\d{2})$/,'$1h$2'):'';
+        const part  = c.nombreDeclaresPartants||c.nombrePartants;
+        const isQ   = (c.libelle||'').toLowerCase().includes('quinté')||(c.categorieStatut||'').includes('QUINTE');
+        S.allCourses.push({
+          id:`R${rNum}C${c.numOrdre}`,
+          reunion:String(rNum), courseNum:String(c.numOrdre),
+          hippodrome:hippo,
+          nom:c.libelle||c.libelleCourt||'',
+          discipline:disc.includes('MONTE')?'Monté':'Attelé',
+          distance:c.distance, partants:part,
+          allocation:c.montantAlloue||null,
+          conditions:cond, heure, isQuinte:isQ,
+        });
+      }
+    }
+
+    if(!S.allCourses.length) throw new Error('Aucune course de trot trouvée.');
+    setLog('prog',`✅ ${S.allCourses.length} course(s) de trot trouvées`,'green');
+    renderProgramme();
+    document.getElementById('prog-list').classList.remove('hidden');
+
+  } catch(e) {
+    setLog('prog','❌ '+e.message,'red');
+  }
+}
+
+function renderProgramme() {
+  const scC = v => !v||isNaN(v)?'var(--muted)':v>=4?'var(--green)':v>=3?'var(--gold)':v>=2?'var(--orange)':'var(--red)';
+  let h = '';
+  // Grouper par réunion
+  const byR = {};
+  S.allCourses.forEach(c => {
+    if(!byR[c.reunion]) byR[c.reunion]=[];
+    byR[c.reunion].push(c);
+  });
+  for(const [r, courses] of Object.entries(byR)){
+    const hippo = courses[0].hippodrome;
+    h += `<div style="margin-bottom:14px">
+      <div style="font-family:var(--serif);font-size:14px;font-weight:700;color:var(--gold);margin-bottom:6px">R${r} — ${hippo}</div>`;
+    for(const c of courses){
+      h += `<div class="crow">
+        <div style="flex:1">
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:2px">
+            <span style="font-family:var(--mono);font-size:11px;color:var(--muted)">${c.id}</span>
+            ${c.heure?`<span style="font-size:12px;color:var(--muted)">${c.heure}</span>`:''}
+            ${c.isQuinte?`<span class="chip" style="background:rgba(201,165,74,.15);color:var(--gold)">Quinté+</span>`:''}
+          </div>
+          <div style="font-size:13px;font-weight:600">${c.nom||'—'}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${c.discipline} · ${c.distance||'?'}m · ${c.partants||'?'} partants${c.allocation?' · '+(c.allocation/1000).toFixed(0)+'k€':''}</div>
+        </div>
+        <span style="font-size:11px;color:var(--muted)">→</span>
+      </div>`;
+    }
+    h += '</div>';
+  }
+  document.getElementById('prog-courses').innerHTML = h;
+}
+
+// ══════════════════════════════════════════════════════
+//  EXPERT N°1 — SCORING
+// ══════════════════════════════════════════════════════
+const HIPPO_SC = {VINCENNES:4,'PARIS VINCENNES':4,ENGHIEN:3,CABOURG:2,VICHY:2,'CAGNES SUR MER':2,CAGNES:2};
+const sh = h => { const u=(h||'').toUpperCase().replace(/-/g,' '); for(const[k,v] of Object.entries(HIPPO_SC)) if(u.includes(k)) return v; return 0; };
+const sd = d => { if(!d) return null; const n=parseInt(d); return isNaN(n)?null:n<=2100?2:n<=2900?3:4; };
+const sp = n => { if(!n) return null; const v=parseInt(n); return isNaN(v)?null:v>=18?'ELIM':v<=16?4:2; };
+const sg = c => { const s=(c||'').toLowerCase(); return /\d+\s*(à|a)\s*\d+\s*ans/.test(s)?4:/pour\s+\d+\s*ans/.test(s)&&!s.includes(' et ')?1:4; };
+const spot = c => { const s=(c||'').toLowerCase(); return s.includes('autostart')||s.includes('auto-start')?3:s.includes('volté')||s.includes('2 poteaux')?1:3; };
+const isExclu = c => ['apprenti','lads','amateur','gentlemen','gentleman','ladies'].some(k=>(c||'').toLowerCase().includes(k));
+
+function scoreE1(c) {
+  if(isExclu(c.conditions)) return {verdict:'ÉLIMINÉE',reason:'Apprentis/amateurs',total:0,scores:null};
+  const p=sp(c.partants);
+  if(p==='ELIM') return {verdict:'ÉLIMINÉE',reason:`${c.partants} partants ≥18`,total:0,scores:null};
+  const h=sh(c.hippodrome), d=sd(c.distance), g=sg(c.conditions), t=spot(c.conditions);
+  const scores={H:h,D:d,P:p,G:g,Pot:t};
+  const total=[h,d,p,g,t].filter(v=>typeof v==='number').reduce((a,b)=>a+b,0);
+  if(total>16)  return {verdict:'JOUABLE',  total,scores};
+  if(total>=14) return {verdict:'PRUDENCE',  total,scores};
+  return             {verdict:'À ÉVITER', total,scores};
+}
+
+// ══════════════════════════════════════════════════════
+//  ÉTAPE 3 — SCAN 1
+// ══════════════════════════════════════════════════════
+const VUI = {
+  JOUABLE:  {i:'🔥',c:'var(--green)', b:'var(--greenb)',cls:'jouable'},
+  PRUDENCE: {i:'⚠️',c:'var(--orange)',b:'var(--orangeb)',cls:'prudence'},
+  'À ÉVITER':{i:'❌',c:'var(--red)',  b:'var(--redb)',  cls:'eviter'},
+  ÉLIMINÉE: {i:'🚫',c:'var(--muted)',b:'var(--card)',   cls:'eliminee'},
+};
+const scC = v => !v||isNaN(v)?'var(--muted)':v>=4?'var(--green)':v>=3?'var(--gold)':v>=2?'var(--orange)':'var(--red)';
+
+function lancerScan1() {
+  S.scoredCourses = S.allCourses.map(c => ({...c,...scoreE1(c)}))
+    .sort((a,b)=>{const o={JOUABLE:0,PRUDENCE:1,'À ÉVITER':2,ÉLIMINÉE:3};return(o[a.verdict]??9)-(o[b.verdict]??9)||((b.total||0)-(a.total||0));});
+
+  S.checkedIds.clear();
+  const jouables = S.scoredCourses.filter(c=>c.verdict==='JOUABLE').length;
+  document.getElementById('scan1-summary').textContent = `${jouables} jouable(s) sur ${S.scoredCourses.length} courses`;
+
+  renderScan1();
+  showBloc('scan1');
+}
+
+function renderScan1() {
+  let h = '';
+  for(const c of S.scoredCourses){
+    const ui = VUI[c.verdict]||VUI['À ÉVITER'];
+    const isJ = c.verdict==='JOUABLE';
+    const isChk = S.checkedIds.has(c.id);
+    const dots = c.scores ? Object.entries(c.scores).map(([k,v])=>
+      `<div title="${k}" style="width:24px;height:24px;border-radius:5px;background:${scC(v)}18;color:${scC(v)};display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:700">${typeof v==='number'?v:'🚫'}</div>`
+    ).join('') : '';
+
+    h += `<div class="crow ${ui.cls}${isJ&&isChk?' checked':''}" id="crow-${c.id}">
+      ${isJ?`<div class="cbox${isChk?' on':''}" onclick="toggleCheck('${c.id}')" id="chk-${c.id}">${isChk?'<svg width="12" height="12" viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3" stroke="#000" stroke-width="2" fill="none" stroke-linecap="round"/></svg>':''}</div>`
+           :`<div style="width:22px;height:22px;flex-shrink:0"></div>`}
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:2px">
+          <span style="font-family:var(--mono);font-size:11px;color:var(--muted)">${c.id}</span>
+          ${c.heure?`<span style="font-size:11px;color:var(--muted)">${c.heure}</span>`:''}
+          ${c.isQuinte?`<span class="chip" style="background:rgba(201,165,74,.15);color:var(--gold);font-size:10px">Q+</span>`:''}
+        </div>
+        <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.nom||c.hippodrome}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:1px">${c.hippodrome} · ${c.distance||'?'}m · ${c.partants||'?'} partants</div>
+        <div style="display:flex;gap:3px;margin-top:5px">${dots}</div>
+      </div>
+      <div class="vmin" style="background:${ui.b};color:${ui.c}">
+        <div style="font-size:16px">${ui.i}</div>
+        ${c.total>0?`<div style="font-family:var(--mono);font-size:10px;font-weight:700">${c.total}/20</div>`:''}
+      </div>
+    </div>`;
+  }
+  document.getElementById('scan1-courses').innerHTML = h;
+  updateScan2Btn();
+}
+
+function toggleCheck(id) {
+  if(!S.scoredCourses.find(c=>c.id===id&&c.verdict==='JOUABLE')) return;
+  if(S.checkedIds.has(id)) S.checkedIds.delete(id);
+  else S.checkedIds.add(id);
+
+  // Update checkbox UI
+  const chk = document.getElementById('chk-'+id);
+  const row = document.getElementById('crow-'+id);
+  if(chk){
+    const isOn = S.checkedIds.has(id);
+    chk.className = 'cbox'+(isOn?' on':'');
+    chk.innerHTML = isOn?'<svg width="12" height="12" viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3" stroke="#000" stroke-width="2" fill="none" stroke-linecap="round"/></svg>':'';
+    if(row) row.className = 'crow jouable'+(isOn?' checked':'');
+  }
+  updateScan2Btn();
+}
+
+function updateScan2Btn() {
+  document.getElementById('btn-scan2').disabled = S.checkedIds.size === 0;
+  if(S.checkedIds.size>0){
+    document.getElementById('btn-scan2').textContent = `🔬 Scan 2 — Analyser ${S.checkedIds.size} course(s) sélectionnée(s)`;
+  } else {
+    document.getElementById('btn-scan2').textContent = '🔬 Scan 2 — Expert N°2 (cochez une course)';
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  EXPERT N°2 — SCORING
+// ══════════════════════════════════════════════════════
+const TOP_DRV = ['raffin','rochard','lebourgeois','nivard','abrivard','mottier','ploquin'];
+const TOP_CUM = ['bazire','duvaldestin','abrivard','guarato','briand'];
+const NUM_STARS=[4,5,6], NUM_ELIM=[1,2,10,11,17,18], MOIS_HIV=[10,11,12,1,2,3];
+
+const calcVM = courses => {
+  if(!courses||!courses.length) return null;
+  const c3=courses.slice(0,3);
+  const idx=c3.map(c=>{const p=(c.place||'').toString().toUpperCase();const pn=isNaN(parseInt(p))||['D','A','T'].includes(p)||parseInt(p)>10?10:parseInt(p);return c.alloc>0?(100000/c.alloc)*pn:10;});
+  const total=idx.reduce((a,b)=>a+b,0);
+  return {indices:idx,total,indice:parseFloat((total/c3.length).toFixed(2))};
+};
+
+function scoreE2(p, course) {
+  const pts=[];
+  const mois=new Date().getMonth()+1;
+  const num=parseInt(p.numero||p.numPmu)||0;
+  const driver=(p.nomJockey||p.driver||'').toLowerCase();
+  const entr=(p.nomEntraineur||p.entraineur||'').toLowerCase();
+  const musique=p.musique||p.dernierResultat||'';
+  const gains=parseFloat(p.gainsCarriere||p.gainsTotaux||0);
+  const allocJ=parseFloat(course.allocation)||0;
+
+  if(NUM_STARS.includes(num)) pts.push({l:`N°${num} favoris autostart`,p:1});
+  else if(NUM_ELIM.includes(num)) pts.push({l:`N°${num} défavorable`,p:-1});
+  if(musique){const f=musique.trim()[0];const haD=musique.toUpperCase().includes('D');if(f==='1'&&!haD)pts.push({l:'Musique régulière (1er, sans D)',p:1});}
+  if(TOP_DRV.some(d=>driver.includes(d))) pts.push({l:`Driver top LeTrot`,p:1});
+  const isCum=TOP_CUM.some(c=>driver.includes(c)||entr.includes(c));
+  const dEq=driver&&entr&&(driver.split(' ').some(w=>w.length>3&&entr.includes(w))||entr.split(' ').some(w=>w.length>3&&driver.includes(w)));
+  if(isCum&&dEq) pts.push({l:'Cumulard top 6 (entr=driver)',p:1});
+  if(gains>0&&allocJ>0){const diff=(allocJ-gains)/allocJ;if(diff>=0&&diff<=0.05)pts.push({l:'Tangent au plafond',p:1});}
+  if(p.vmRank&&p.vmRank<=3) pts.push({l:`Vraie Musique top 3 (${p.vmIndice})`,p:1});
+  if(p.nom&&p.dernierHippo&&p.dernierHippo===course.hippodrome) pts.push({l:'Même hippodrome que dernière course',p:1});
+  const isHiv=MOIS_HIV.includes(mois);
+  if(p.saisonVictoires){const sv=p.saisonVictoires.toLowerCase();if((isHiv&&sv.includes('hiver'))||(!isHiv&&sv.includes('été')))pts.push({l:'Saisonnalité favorable',p:1});}
+
+  return {pts,total:Math.max(0,pts.filter(x=>x.p>0).length-pts.filter(x=>x.p<0).length)};
+}
+
+// ══════════════════════════════════════════════════════
+//  ÉTAPE 4 — SCAN 2
+// ══════════════════════════════════════════════════════
+async function lancerScan2() {
+  const selected = S.scoredCourses.filter(c=>S.checkedIds.has(c.id));
+  if(!selected.length) return;
+
+  showBloc('scan2');
+  document.getElementById('scan2-results').innerHTML='';
+  setLog('scan2',`🌐 Récupération des partants pour ${selected.length} course(s)…`,'dim');
+  S.e2Results = [];
+
+  const dateFmt = fmtPMU(S.selDate);
+  const dateFR  = fmtFR(S.selDate);
+
+  for(const course of selected){
+    setLog('scan2',`⚙️ ${course.id} — ${course.nom||course.hippodrome}…`,'dim');
+    try {
+      const res = await fetch(`${BASE}/api/partants?date=${dateFmt}&reunion=${course.reunion}&course=${course.courseNum}`);
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const json = await res.json();
+      if(json.error) throw new Error(json.error);
+
+      const participants = json.participants||json.partants||[];
+      if(!participants.length) throw new Error('Aucun partant trouvé');
+
+      // Vraie Musique
+      const vmArr=participants.map(p=>({nom:p.nom||p.nomCheval||'',ind:calcVM(p.dernierResultats||[])?.indice??999})).sort((a,b)=>a.ind-b.ind);
+      const vmMap={};vmArr.forEach((v,i)=>{vmMap[v.nom]={rank:i+1,indice:v.ind};});
+
+      const scored=participants.map(p=>{
+        const nom=p.nom||p.nomCheval||'';
+        const vm=vmMap[nom];
+        const pvm={...p,nom,vmRank:vm?.rank,vmIndice:vm?.indice};
+        const r=scoreE2(pvm,course);
+        return {...pvm,...r};
+      }).sort((a,b)=>b.total-a.total);
+
+      S.e2Results.push({course,scored});
+
+      // Sauvegarde
+      dbAdd({
+        id:Date.now()+Math.random(),
+        date:dateFR,
+        course:course.nom||course.hippodrome,
+        hippodrome:course.hippodrome,
+        heure:course.heure,
+        isQuinte:course.isQuinte,
+        top3:scored.slice(0,3).map(p=>({numero:p.numero||p.numPmu,nom:p.nom,score:p.total})),
+        arrivee:null,
+        statut:'en_attente',
+      });
+
+    } catch(e) {
+      S.e2Results.push({course,error:e.message});
+    }
+  }
+
+  setLog('scan2',`✅ ${S.e2Results.filter(r=>!r.error).length} course(s) analysées`,'green');
+  renderScan2Results();
+}
+
+function renderScan2Results() {
+  const cols=['var(--green)','var(--gold)','var(--orange)'];
+  const medals=['🥇','🥈','🥉'];
+  let h='';
+
+  for(const {course,scored,error} of S.e2Results){
+    h+=`<div style="margin-bottom:24px">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px">
+        <div style="font-family:var(--serif);font-size:17px;font-weight:700;color:var(--gold)">${course.hippodrome} ${course.heure?'· '+course.heure:''}</div>
+        <div style="font-size:13px;font-weight:600;margin-top:2px">${course.nom||'—'}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${course.id} · ${course.discipline} · ${course.distance}m · ${course.partants} partants${course.isQuinte?' · ⭐ Quinté+':''}</div>
+      </div>`;
+
+    if(error){
+      h+=`<div style="background:var(--redb);border:1px solid rgba(192,56,56,.3);border-radius:9px;padding:12px;color:var(--red);font-size:13px">❌ ${error}</div>`;
+    } else {
+      // Podium
+      h+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">`;
+      scored.slice(0,3).forEach((p,i)=>{
+        const num=p.numero||p.numPmu||'?';
+        h+=`<div style="background:${cols[i]}10;border:1px solid ${cols[i]}40;border-radius:10px;padding:11px 8px;text-align:center">
+          <div style="font-size:20px;margin-bottom:4px">${medals[i]}</div>
+          <div style="width:28px;height:28px;border-radius:6px;background:${cols[i]}25;color:${cols[i]};display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:14px;margin:0 auto 5px">${num}</div>
+          <div style="font-weight:700;font-size:11px;line-height:1.2;margin-bottom:2px">${p.nom||'—'}</div>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:4px">${p.nomJockey||''}</div>
+          <div style="font-family:var(--mono);font-weight:700;font-size:16px;color:${cols[i]}">${p.total}</div>
+          <div style="font-size:9px;color:var(--muted)">pts</div>
+        </div>`;
+      });
+      h+=`</div>`;
+
+      // Tous partants
+      scored.forEach((p,i)=>{
+        const col=i<3?cols[i]:'var(--muted)';
+        const num=p.numero||p.numPmu||'?';
+        const pos=p.pts.filter(x=>x.p>0), neg=p.pts.filter(x=>x.p<0);
+        h+=`<div class="cheval-card">
+          <div class="cheval-head" onclick="this.nextElementSibling.classList.toggle('hidden')">
+            <div class="cheval-num" style="background:${col}20;color:${col}">${num}</div>
+            <div style="flex:1">
+              <div style="font-weight:700;font-size:13px">${p.nom||'—'}</div>
+              <div style="font-size:10px;color:var(--muted)">${p.nomJockey||''}</div>
+              <div class="pbar"><div class="pbar-fill" style="width:${Math.min(100,(p.total/8)*100)}%;background:${col}"></div></div>
+            </div>
+            <div style="font-family:var(--mono);font-weight:700;font-size:16px;color:${col};flex-shrink:0">${p.total}<span style="font-size:9px;color:var(--muted)">pts</span></div>
+            <span style="color:var(--muted);font-size:11px;margin-left:4px">▼</span>
+          </div>
+          <div class="cheval-pts hidden">
+            ${pos.map(x=>`<span class="chip" style="background:rgba(34,181,102,.12);color:var(--green);font-size:10px">✓ ${x.l}</span>`).join('')}
+            ${neg.map(x=>`<span class="chip" style="background:rgba(192,56,56,.12);color:var(--red);font-size:10px">✗ ${x.l}</span>`).join('')}
+            ${!pos.length&&!neg.length?`<span style="font-size:11px;color:var(--muted)">Données insuffisantes</span>`:''}
+          </div>
+        </div>`;
+      });
+
+      // Recommandations jeux
+      if(scored.length>=2){
+        const [t1,t2,t3]=scored;
+        const n1=t1.numero||t1.numPmu, n2=t2.numero||t2.numPmu, n3=t3?.numero||t3?.numPmu;
+        const isQ=course.isQuinte;
+        h+=`<div style="background:var(--card);border:1px solid rgba(201,165,74,.25);border-radius:9px;padding:13px;margin-top:6px">
+          <div style="font-family:var(--serif);font-size:15px;color:var(--gold);margin-bottom:8px">Jeux recommandés CDCH</div>
+          ${[
+            ['Simple Gagnant',`#${n1} ${t1.nom}`,isQ?'LT: 32,29%':'','var(--green)'],
+            ['Simple Placé',`#${n1} ${t1.nom}`,isQ?'LT: 57,35%':'','var(--green)'],
+            ['Couplé Gagnant',`#${n1}+#${n2}`,isQ?'LT: 12,13%':'','var(--gold)'],
+            ['Couplé Placé',`#${n1}+#${n2}`,isQ?'LT: 23,70%':'','var(--gold)'],
+            t3?['2SUR4',`#${n1}+#${n2}+#${n3}`,isQ?'LT: 32,43%':'','var(--orange)']:null,
+          ].filter(Boolean).map(([l,d,s,c])=>`
+            <div style="display:flex;justify-content:space-between;align-items:center;background:var(--sf);border-radius:7px;padding:7px 10px;margin-bottom:5px">
+              <div><div style="font-weight:600;font-size:11px;color:${c}">${l}</div><div style="font-size:11px;color:var(--dim);margin-top:1px">${d}</div></div>
+              ${s?`<span style="font-size:10px;color:var(--muted)">${s}</span>`:''}
+            </div>`).join('')}
+        </div>`;
+      }
+    }
+    h+='</div>';
+  }
+
+  document.getElementById('scan2-results').innerHTML=h;
+}
+
+// ══════════════════════════════════════════════════════
+//  BILAN
+// ══════════════════════════════════════════════════════
+function renderBilan() {
+  const db = dbGet();
+  const all = db.analyses||[];
+  const done = all.filter(a=>a.statut==='complete');
+  const wait = all.filter(a=>a.statut==='en_attente');
+  const el = document.getElementById('bilan-content');
+
+  // Calculer stats
+  const stats = {sg:0,sp:0,cg:0,cp:0,s4:0,total:done.length};
+  const ecartsG=[],ecartsP=[],ecartsCG=[],ecartsCP=[];
+
+  done.forEach(a=>{
+    const arr=(a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
+    const top=(a.top3||[]).map(p=>p.numero);
+    if(!arr.length||!top.length) return;
+    if(top[0]===arr[0]) stats.sg++;
+    if(arr.slice(0,3).includes(top[0])) stats.sp++;
+    if(top.length>=2&&arr[0]===top[0]&&arr[1]===top[1]) stats.cg++;
+    if(top.length>=2&&arr.slice(0,3).includes(top[0])&&arr.slice(0,3).includes(top[1])) stats.cp++;
+    if(top.filter(n=>arr.slice(0,4).includes(n)).length>=2) stats.s4++;
+    // Calcul écarts (position du cheval sélectionné dans l'arrivée)
+    const pos=arr.indexOf(top[0])+1;
+    if(pos>0){ecartsG.push(pos);ecartsP.push(pos);}
+  });
+
+  const pct=(n,t)=>t>0?Math.round((n/t)*100):0;
+  const col=v=>v>=50?'var(--green)':v>=30?'var(--gold)':v>=15?'var(--orange)':'var(--red)';
+  const ecartStats=arr=>arr.length?{min:Math.min(...arr),max:Math.max(...arr),moy:parseFloat((arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1))}:{min:'-',max:'-',moy:'-'};
+  const esG=ecartStats(ecartsG);
+
+  let h='';
+
+  if(!done.length && !wait.length){
+    h='<div style="text-align:center;padding:50px 0;color:var(--muted);font-size:13px">Aucune analyse encore.<br/>Lancez un scan dans l\'onglet 🎯</div>';
+    el.innerHTML=h; return;
+  }
+
+  // Stats globales
+  h+=`<div class="stitle">Statistiques (${done.length} course${done.length>1?'s':''} analysée${done.length>1?'s':''})</div>
+  <div class="stat2">
+    <div class="sbox">
+      <div class="sval" style="color:${col(pct(stats.sg,stats.total))}">${pct(stats.sg,stats.total)}%</div>
+      <div class="slbl">Simple Gagnant</div>
+      <div class="ssub">${stats.sg}/${stats.total} · LT: 32%</div>
+      <div class="pbar"><div class="pbar-fill" style="width:${pct(stats.sg,stats.total)}%;background:${col(pct(stats.sg,stats.total))}"></div></div>
+    </div>
+    <div class="sbox">
+      <div class="sval" style="color:${col(pct(stats.sp,stats.total))}">${pct(stats.sp,stats.total)}%</div>
+      <div class="slbl">Simple Placé</div>
+      <div class="ssub">${stats.sp}/${stats.total} · LT: 57%</div>
+      <div class="pbar"><div class="pbar-fill" style="width:${pct(stats.sp,stats.total)}%;background:${col(pct(stats.sp,stats.total))}"></div></div>
+    </div>
+    <div class="sbox">
+      <div class="sval" style="color:${col(pct(stats.cp,stats.total))}">${pct(stats.cp,stats.total)}%</div>
+      <div class="slbl">Couplé Placé</div>
+      <div class="ssub">${stats.cp}/${stats.total} · LT: 24%</div>
+      <div class="pbar"><div class="pbar-fill" style="width:${pct(stats.cp,stats.total)}%;background:${col(pct(stats.cp,stats.total))}"></div></div>
+    </div>
+    <div class="sbox">
+      <div class="sval" style="color:${col(pct(stats.s4,stats.total))}">${pct(stats.s4,stats.total)}%</div>
+      <div class="slbl">2SUR4</div>
+      <div class="ssub">${stats.s4}/${stats.total} · LT: 32%</div>
+      <div class="pbar"><div class="pbar-fill" style="width:${pct(stats.s4,stats.total)}%;background:${col(pct(stats.s4,stats.total))}"></div></div>
+    </div>
+  </div>`;
+
+  // Écarts
+  if(done.length){
+    h+=`<div class="stitle">Écarts (position réelle du cheval sélectionné)</div>
+    <div class="card" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center">
+      <div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--green)">${esG.min}</div><div style="font-size:11px;color:var(--muted)">Écart min</div></div>
+      <div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--gold)">${esG.moy}</div><div style="font-size:11px;color:var(--muted)">Écart moyen</div></div>
+      <div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--orange)">${esG.max}</div><div style="font-size:11px;color:var(--muted)">Écart max</div></div>
+    </div>`;
+  }
+
+  // En attente de résultats
+  if(wait.length){
+    h+=`<div class="stitle">${wait.length} résultat(s) à saisir</div>`;
+    wait.slice(0,10).forEach(a=>{
+      const top3=(a.top3||[]).map(p=>`<span class="chip" style="background:var(--sf);color:var(--dim);font-size:10px">#${p.numero} ${p.nom}</span>`).join(' ');
+      h+=`<div class="rcard">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:8px">
+          <div>
+            <div style="font-weight:600;font-size:13px">${a.course}</div>
+            <div style="font-size:11px;color:var(--muted)">${a.date} · ${a.hippodrome||''} · ${a.heure||''}</div>
+          </div>
+          ${a.isQuinte?`<span class="chip" style="background:rgba(201,165,74,.15);color:var(--gold)">Q+</span>`:''}
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:5px">Notre sélection</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">${top3}</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:5px">Saisir l'arrivée réelle (ex: 7-2-9)</div>
+        <div style="display:flex;gap:8px">
+          <input class="inp" placeholder="7-2-9" id="arr-${a.id}" style="flex:1;font-size:13px"/>
+          <button class="btn btn-gold btn-sm" onclick="valArr('${a.id}')">OK</button>
+        </div>
+      </div>`;
+    });
+  }
+
+  // Historique complet
+  if(done.length){
+    h+=`<div class="stitle">Historique des résultats</div>`;
+    done.slice(0,20).forEach(a=>{
+      const arr=(a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
+      const top=(a.top3||[]).map(p=>p.numero);
+      const sg=top[0]===arr[0], sp=arr.slice(0,3).includes(top[0]);
+      const cp=top.length>=2&&arr.slice(0,3).includes(top[0])&&arr.slice(0,3).includes(top[1]);
+      const s4=top.filter(n=>arr.slice(0,4).includes(n)).length>=2;
+      const badges=[];
+      if(sg) badges.push({l:'SG✅',c:'var(--green)',b:'var(--greenb)'});
+      else   badges.push({l:'SG❌',c:'var(--muted)',b:'var(--sf)'});
+      if(sp) badges.push({l:'SP✅',c:'var(--green)',b:'var(--greenb)'});
+      if(cp) badges.push({l:'CP✅',c:'var(--gold)',b:'rgba(201,165,74,.12)'});
+      if(s4) badges.push({l:'2S4✅',c:'var(--blue)',b:'var(--blueb)'});
+
+      h+=`<div class="rcard">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+          <div>
+            <div style="font-weight:600;font-size:13px">${a.course}</div>
+            <div style="font-size:11px;color:var(--muted)">${a.date}</div>
+          </div>
+          <div style="font-family:var(--mono);color:var(--muted);font-size:11px">→ ${a.arrivee}</div>
+        </div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          ${badges.map(b=>`<span class="chip" style="background:${b.b};color:${b.c}">${b.l}</span>`).join('')}
+        </div>
+      </div>`;
+    });
+  }
+
+  h+=`<button class="btn btn-ghost" style="margin-top:8px" onclick="if(confirm('Effacer tout?')){localStorage.removeItem('${DB}');renderBilan();toast('Effacé')}">Effacer l'historique</button>`;
+  el.innerHTML=h;
+}
+
+function valArr(id) {
+  const inp=document.getElementById('arr-'+id);
+  if(!inp||!inp.value.trim()){toast('Entrez l\'arrivée');return;}
+  const nums=inp.value.split(/[-\s,]+/).map(n=>parseInt(n)).filter(n=>!isNaN(n));
+  if(!nums.length){toast('Format: 7-2-9');return;}
+  dbUpd(id,{arrivee:nums.join('-'),statut:'complete'});
+  toast('✅ Résultat enregistré !');
+  renderBilan();
+}
+
+// ══════════════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════════════
+function setLog(id,msg,type='dim'){
+  const el=document.getElementById(id+'-log');
+  if(!el) return;
+  el.style.color=type==='green'?'var(--green)':type==='red'?'var(--red)':'var(--dim)';
+  el.innerHTML=type==='dim'?`<span class="spin" style="font-size:10px;margin-right:6px">◌</span>${msg}`:msg;
+}
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('on');
+  setTimeout(()=>t.classList.remove('on'),2500);
+}
+
+// ── INIT ─────────────────────────────────────────────
+const now=new Date();
+document.getElementById('hdr-date').textContent=now.getDate()+' '+MONTHS_S[now.getMonth()];
+document.getElementById('hdr-day').textContent=DAYS[now.getDay()];
+renderCal();
+</script>
+</body>
+</html>
