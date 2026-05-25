@@ -72,15 +72,14 @@ input,select{outline:none;font-family:var(--sans);-webkit-appearance:none}
 .cal-dn { text-align:center;font-size:10px;color:var(--muted);padding:4px 0;font-weight:600; }
 .cal-d {
   aspect-ratio:1;display:flex;align-items:center;justify-content:center;
-  border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;
-  border:1px solid transparent;background:transparent;color:var(--dim);
+  border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;
+  border:1px solid var(--border);background:var(--sf);color:var(--text);
   transition:all .12s;
 }
-.cal-d:active { background:var(--sf); }
+.cal-d:active { background:var(--gold);color:#000; }
 .cal-d.today { border-color:var(--gold);color:var(--gold); }
-.cal-d.sel { background:var(--gold)!important;color:#000!important;font-weight:700; }
-.cal-d.past { opacity:.3;cursor:default; }
-.cal-d.empty { cursor:default; }
+.cal-d.sel { background:var(--gold)!important;color:#000!important;font-weight:700;border-color:var(--gold); }
+.cal-d.empty { cursor:default;background:transparent;border:none; }
 
 /* ── BUTTONS ── */
 .btn {
@@ -342,12 +341,10 @@ function renderCal() {
 
   for(let d=1;d<=last.getDate();d++){
     const dt = new Date(calY,calM,d);
-    const isPast  = dt < today;
     const isToday = dt.getTime()===today.getTime();
     const isSel   = S.selDate && dt.getTime()===S.selDate.getTime();
-    const cls = [isPast?'past':'', isToday?'today':'', isSel?'sel':''].filter(Boolean).join(' ');
-    const click = isPast ? '' : `onclick="selDate(${calY},${calM},${d})"`;
-    h += `<div class="cal-d ${cls}" ${click}>${d}</div>`;
+    const cls = [isToday?'today':'', isSel?'sel':''].filter(Boolean).join(' ');
+    h += `<div class="cal-d ${cls}" onclick="selDate(${calY},${calM},${d})">${d}</div>`;
   }
   document.getElementById('cal-grid').innerHTML = h;
 }
