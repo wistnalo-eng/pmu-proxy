@@ -26,7 +26,7 @@
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{background:var(--bg)}
-body{color:var(--text);font-family:var(--sans);font-size:15px;min-height:100dvh;-webkit-text-size-adjust:100%;overscroll-behavior:none;padding-bottom:calc(var(--sb)+72px)}
+body{color:var(--text);font-family:var(--sans);font-size:15px;min-height:100dvh;-webkit-text-size-adjust:100%;overscroll-behavior:none;padding-bottom:calc(var(--sb)+130px)}
 ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:var(--sf)}::-webkit-scrollbar-thumb{background:var(--goldd);border-radius:2px}
 button{cursor:pointer;font-family:var(--sans);border:none;outline:none;-webkit-tap-highlight-color:transparent;transition:all .15s}
 input,select{outline:none;font-family:var(--sans);-webkit-appearance:none}
@@ -195,9 +195,10 @@ input,select{outline:none;font-family:var(--sans);-webkit-appearance:none}
       </div>
       <div class="cal-grid" id="cal-grid"></div>
     </div>
-    <button class="btn btn-gold" id="btn-valdate" onclick="validerDate()" disabled>
+    <button class="btn btn-gold" id="btn-valdate" onclick="validerDate()" style="font-size:16px;padding:15px;margin-top:14px">
       Valider la date →
     </button>
+    <div id="cal-hint" style="text-align:center;font-size:12px;color:var(--muted);margin-top:6px">Sélectionnez d'abord une date</div>
   </div>
 
   <!-- ── ÉTAPE 2 : PROGRAMME + SCAN 1 ── -->
@@ -229,7 +230,7 @@ input,select{outline:none;font-family:var(--sans);-webkit-appearance:none}
     <div class="stitle">Courses analysées — cochez les courses à analyser</div>
     <div id="scan1-courses"></div>
 
-    <button class="btn btn-green" id="btn-scan2" onclick="lancerScan2()" disabled>
+    <button class="btn btn-green" id="btn-scan2" onclick="lancerScan2()" disabled style="margin-bottom:40px">
       🔬 Scan 2 — Expert N°2 (Analyser les chevaux)
     </button>
   </div>
@@ -242,6 +243,7 @@ input,select{outline:none;font-family:var(--sans);-webkit-appearance:none}
     </div>
     <div class="logbox" id="scan2-log">En attente…</div>
     <div id="scan2-results"></div>
+    <div style="height:50px"></div>
   </div>
 
 </div>
@@ -359,7 +361,8 @@ function calMove(dir) {
 function selDate(y,m,d) {
   S.selDate = new Date(y,m,d);
   renderCal();
-  document.getElementById('btn-valdate').disabled = false;
+  const hint = document.getElementById('cal-hint');
+  if(hint) hint.innerHTML = `✅ Date sélectionnée : <b style="color:var(--gold)">${String(d).padStart(2,'0')}/${String(m+1).padStart(2,'0')}/${y}</b>`;
 }
 
 function fmtPMU(dt) {
@@ -402,7 +405,8 @@ async function validerDate() {
       const rNum  = r.numOfficiel || r.numReunion || '?';
       for(const c of (r.courses||[])){
         const disc = (c.discipline||c.specialite||'').toUpperCase();
-        if(!disc.includes('ATTELE')&&!disc.includes('MONTE')&&!disc.includes('TROT')) continue;
+        // Trot ATTELÉ uniquement — on exclut le monté et les autres disciplines
+        if(!disc.includes('ATTELE')) continue;
         const cond  = c.categorieParticularite||c.conditions||'';
         const heure = c.heureDepart?String(c.heureDepart).replace(/(\d{2})(\d{2})$/,'$1h$2'):'';
         const part  = c.nombreDeclaresPartants||c.nombrePartants;
@@ -412,7 +416,7 @@ async function validerDate() {
           reunion:String(rNum), courseNum:String(c.numOrdre),
           hippodrome:hippo,
           nom:c.libelle||c.libelleCourt||'',
-          discipline:disc.includes('MONTE')?'Monté':'Attelé',
+          discipline:'Attelé',
           distance:c.distance, partants:part,
           allocation:c.montantAlloue||null,
           conditions:cond, heure, isQuinte:isQ,
@@ -475,6 +479,8 @@ const isExclu = c => ['apprenti','lads','amateur','gentlemen','gentleman','ladie
 
 function scoreE1(c) {
   if(isExclu(c.conditions)) return {verdict:'ÉLIMINÉE',reason:'Apprentis/amateurs',total:0,scores:null};
+  const np = parseInt(c.partants)||0;
+  if(np > 0 && np < 8) return {verdict:'ÉLIMINÉE',reason:`${np} partants (<8 — les 3 places ne paient pas)`,total:0,scores:null};
   const p=sp(c.partants);
   if(p==='ELIM') return {verdict:'ÉLIMINÉE',reason:`${c.partants} partants ≥18`,total:0,scores:null};
   const h=sh(c.hippodrome), d=sd(c.distance), g=sg(c.conditions), t=spot(c.conditions);
