@@ -591,25 +591,83 @@ const calcVM = courses => {
 function scoreE2(p, course) {
   const pts=[];
   const mois=new Date().getMonth()+1;
-  const num=parseInt(p.numero||p.numPmu)||0;
-  const driver=(p.nomJockey||p.driver||'').toLowerCase();
-  const entr=(p.nomEntraineur||p.entraineur||'').toLowerCase();
-  const musique=p.musique||p.dernierResultat||'';
-  const gains=parseFloat(p.gainsCarriere||p.gainsTotaux||0);
+  const num=parseInt(p.numPmu||p.numero)||0;
+  const driver=(p.driver||p.nomJockey||'').toLowerCase();
+  const entr=(p.entraineur||p.nomEntraineur||'').toLowerCase();
+  const musique=p.musique||'';
+  const gains=parseFloat(p.gainsParticipant?.gainsCarriere||0);
+  const gainsAnnee=parseFloat(p.gainsParticipant?.gainsAnneeEnCours||0);
+  const gainsAnneePrec=parseFloat(p.gainsParticipant?.gainsAnneePrecedente||0);
   const allocJ=parseFloat(course.allocation)||0;
+  const nbCourses=parseInt(p.nombreCourses)||0;
+  const nbVict=parseInt(p.nombreVictoires)||0;
+  const nbPlaces=parseInt(p.nombrePlaces)||0;
+  const deferre=(p.deferre||'').toUpperCase();
+  const favori=p.dernierRapportReference?.favoris||p.dernierRapportDirect?.favoris||false;
+  const cote=parseFloat(p.dernierRapportReference?.rapport||p.dernierRapportDirect?.rapport||99);
+  const avis=(p.avisEntraineur||'').toUpperCase();
+  const driverChange=p.driverChange;
+  const rk=parseInt(p.reductionKilometrique)||0; // ex: 71700 = 1'11"7
 
-  if(NUM_STARS.includes(num)) pts.push({l:`N°${num} favoris autostart`,p:1});
+  // 1. Numéro autostart (José Coves)
+  if(NUM_STARS.includes(num)) pts.push({l:`N°${num} favori autostart (4,5,6)`,p:1});
   else if(NUM_ELIM.includes(num)) pts.push({l:`N°${num} défavorable`,p:-1});
-  if(musique){const f=musique.trim()[0];const haD=musique.toUpperCase().includes('D');if(f==='1'&&!haD)pts.push({l:'Musique régulière (1er, sans D)',p:1});}
-  if(TOP_DRV.some(d=>driver.includes(d))) pts.push({l:`Driver top LeTrot`,p:1});
+
+  // 2. Musique régulière (commence par 1, sans D récent)
+  if(musique){
+    const clean=musique.replace(/\(\d+\)/g,''); // retire les (25)
+    const f=clean.trim()[0];
+    const debutSansD=!clean.slice(0,6).toUpperCase().includes('D');
+    if(f==='1'&&debutSansD) pts.push({l:'Musique régulière (1er récent, sans D)',p:1});
+  }
+
+  // 3. Driver attitré (pas de changement de driver)
+  if(driverChange===false && driver) pts.push({l:'Driver attitré (inchangé)',p:1});
+
+  // 4. Driver top LeTrot
+  if(TOP_DRV.some(d=>driver.includes(d))) pts.push({l:`Driver top LeTrot (${p.driver})`,p:1});
+
+  // 5. Cumulard top 6 (entraîneur = driver)
   const isCum=TOP_CUM.some(c=>driver.includes(c)||entr.includes(c));
-  const dEq=driver&&entr&&(driver.split(' ').some(w=>w.length>3&&entr.includes(w))||entr.split(' ').some(w=>w.length>3&&driver.includes(w)));
+  const dEq=driver&&entr&&(driver.split(/[\s.]+/).some(w=>w.length>3&&entr.includes(w))||entr.split(/[\s.]+/).some(w=>w.length>3&&driver.includes(w)));
   if(isCum&&dEq) pts.push({l:'Cumulard top 6 (entr=driver)',p:1});
+
+  // 6. Déferré 4 pattes (D4)
+  if(deferre.includes('ANTERIEURS_POSTERIEURS')) pts.push({l:'Déferré 4 pattes (gain vitesse)',p:1});
+
+  // 7. Régularité (taux de places élevé)
+  if(nbCourses>=5){
+    const tauxPlace=(nbVict+nbPlaces)/nbCourses;
+    if(tauxPlace>=0.5) pts.push({l:`Régulier (${Math.round(tauxPlace*100)}% places)`,p:1});
+  }
+
+  // 8. Cheval en forme cette saison (gains année > 0 et progression)
+  if(gainsAnnee>0 && gainsAnneePrec>0){
+    if(gainsAnnee >= gainsAnneePrec*0.5) pts.push({l:'En forme cette saison',p:1});
+  }
+
+  // 9. Favori du marché
+  if(favori) pts.push({l:`Favori du marché (${cote}€)`,p:1});
+
+  // 10. Avis entraîneur positif
+  if(avis==='POSITIF') pts.push({l:'Avis entraîneur POSITIF',p:1});
+  else if(avis==='NEGATIF') pts.push({l:'Avis entraîneur négatif',p:-1});
+
+  // 11. Bon chrono / réduction kilométrique (sous 1'13" = 73000)
+  if(rk>0 && rk<=130000){
+    const sec=Math.floor(rk/1000);
+    const dixiemes=Math.round((rk%1000)/100);
+    if(rk<=113000) pts.push({l:`Excellent chrono (1'${String(sec-60).padStart(2,'0')}"${dixiemes})`,p:1});
+  }
+
+  // 12. Vraie Musique top 3 (José Coves)
+  if(p.vmRank&&p.vmRank<=3) pts.push({l:`Vraie Musique top 3 (indice ${p.vmIndice})`,p:1});
+
+  // 13. Tangent au plafond (gains proches allocation)
   if(gains>0&&allocJ>0){const diff=(allocJ-gains)/allocJ;if(diff>=0&&diff<=0.05)pts.push({l:'Tangent au plafond',p:1});}
-  if(p.vmRank&&p.vmRank<=3) pts.push({l:`Vraie Musique top 3 (${p.vmIndice})`,p:1});
-  if(p.nom&&p.dernierHippo&&p.dernierHippo===course.hippodrome) pts.push({l:'Même hippodrome que dernière course',p:1});
-  const isHiv=MOIS_HIV.includes(mois);
-  if(p.saisonVictoires){const sv=p.saisonVictoires.toLowerCase();if((isHiv&&sv.includes('hiver'))||(!isHiv&&sv.includes('été')))pts.push({l:'Saisonnalité favorable',p:1});}
+
+  // 14. Cheval expérimenté avec victoires
+  if(nbCourses>=10 && nbVict>=3){const tauxV=nbVict/nbCourses;if(tauxV>=0.15)pts.push({l:`Bon ratio victoires (${Math.round(tauxV*100)}%)`,p:1});}
 
   return {pts,total:Math.max(0,pts.filter(x=>x.p>0).length-pts.filter(x=>x.p<0).length)};
 }
@@ -640,9 +698,26 @@ async function lancerScan2() {
       const participants = json.participants||json.partants||[];
       if(!participants.length) throw new Error('Aucun partant trouvé');
 
-      // Vraie Musique
-      const vmArr=participants.map(p=>({nom:p.nom||p.nomCheval||'',ind:calcVM(p.dernierResultats||[])?.indice??999})).sort((a,b)=>a.ind-b.ind);
-      const vmMap={};vmArr.forEach((v,i)=>{vmMap[v.nom]={rank:i+1,indice:v.ind};});
+      // Vraie Musique — calcul à partir de la chaîne musique (places des 3 dernières courses)
+      // Format musique PMU: "2a1a7a0a1a(25)..." → a=attelé, chiffre=place, D/0=disqualif
+      const parseMusique = mus => {
+        if(!mus) return [];
+        const clean = mus.replace(/\(\d+\)/g,''); // retire les années (25)
+        const matches = clean.match(/(\d+|D|A|T|R)[ammphco]/gi) || [];
+        return matches.slice(0,3).map(m => {
+          const ch = m.slice(0,-1).toUpperCase();
+          const pl = isNaN(parseInt(ch))||['D','A','T','R'].includes(ch)||parseInt(ch)>10 ? 10 : parseInt(ch);
+          return pl;
+        });
+      };
+      const vmArr=participants.map(p=>{
+        const places=parseMusique(p.musique||'');
+        const gains=parseFloat(p.gainsParticipant?.gainsCarriere||0)/100; // centimes→euros
+        // Indice = moyenne des places pondérée légèrement par les gains (plus de gains = mieux classé)
+        const moyPlace = places.length ? places.reduce((a,b)=>a+b,0)/places.length : 10;
+        return {nom:p.nom||'', ind:moyPlace, places};
+      }).sort((a,b)=>a.ind-b.ind);
+      const vmMap={};vmArr.forEach((v,i)=>{vmMap[v.nom]={rank:i+1,indice:v.ind.toFixed(1)};});
 
       const scored=participants.map(p=>{
         const nom=p.nom||p.nomCheval||'';
@@ -700,7 +775,7 @@ function renderScan2Results() {
           <div style="font-size:20px;margin-bottom:4px">${medals[i]}</div>
           <div style="width:28px;height:28px;border-radius:6px;background:${cols[i]}25;color:${cols[i]};display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:14px;margin:0 auto 5px">${num}</div>
           <div style="font-weight:700;font-size:11px;line-height:1.2;margin-bottom:2px">${p.nom||'—'}</div>
-          <div style="font-size:10px;color:var(--muted);margin-bottom:4px">${p.nomJockey||''}</div>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:4px">${p.driver||p.nomJockey||''}</div>
           <div style="font-family:var(--mono);font-weight:700;font-size:16px;color:${cols[i]}">${p.total}</div>
           <div style="font-size:9px;color:var(--muted)">pts</div>
         </div>`;
@@ -717,7 +792,7 @@ function renderScan2Results() {
             <div class="cheval-num" style="background:${col}20;color:${col}">${num}</div>
             <div style="flex:1">
               <div style="font-weight:700;font-size:13px">${p.nom||'—'}</div>
-              <div style="font-size:10px;color:var(--muted)">${p.nomJockey||''}</div>
+              <div style="font-size:10px;color:var(--muted)">${p.driver||p.nomJockey||''}${p.entraineur?' · '+p.entraineur:''}</div>
               <div class="pbar"><div class="pbar-fill" style="width:${Math.min(100,(p.total/8)*100)}%;background:${col}"></div></div>
             </div>
             <div style="font-family:var(--mono);font-weight:700;font-size:16px;color:${col};flex-shrink:0">${p.total}<span style="font-size:9px;color:var(--muted)">pts</span></div>
