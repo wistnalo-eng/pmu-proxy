@@ -11,39 +11,39 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 :root {
- --bg:#06070a; --sf:#0a0c14; --card:#0e1120; --border:#181e30;
- --gold:#c9a54a; --goldg:rgba(201,165,74,.13); --goldd:#5a4418;
- --green:#22b566; --greenb:#061810;
- --orange:#cc6e28; --orangeb:#180e06;
- --red:#c03838; --redb:#180606;
- --blue:#3a8fd4; --blueb:#060f1a;
- --text:#ddd8cc; --dim:#8890a8; --muted:#4a5068;
- --serif:'Cormorant Garamond',serif;
- --sans:'DM Sans',sans-serif;
- --mono:'JetBrains Mono',monospace;
- --st:env(safe-area-inset-top,0px);
- --sb:env(safe-area-inset-bottom,0px);
+  --bg:#06070a; --sf:#0a0c14; --card:#0e1120; --border:#181e30;
+  --gold:#c9a54a; --goldg:rgba(201,165,74,.13); --goldd:#5a4418;
+  --green:#22b566; --greenb:#061810;
+  --orange:#cc6e28; --orangeb:#180e06;
+  --red:#c03838; --redb:#180606;
+  --blue:#3a8fd4; --blueb:#060f1a;
+  --text:#ddd8cc; --dim:#8890a8; --muted:#4a5068;
+  --serif:'Cormorant Garamond',serif;
+  --sans:'DM Sans',sans-serif;
+  --mono:'JetBrains Mono',monospace;
+  --st:env(safe-area-inset-top,0px);
+  --sb:env(safe-area-inset-bottom,0px);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{background:var(--bg)}
-body{color:var(--text);font-family:var(--sans);font-size:15px;min-height:100dvh;-webkit-text-size-adjust:100%;overscroll-behavior:none;padding-bottom:calc(var(--sb)+130px)}
+body{color:var(--text);font-family:var(--sans);font-size:15px;min-height:100dvh;-webkit-text-size-adjust:100%;overscroll-behavior:none;padding-bottom:calc(var(--sb)+180px)}
 ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:var(--sf)}::-webkit-scrollbar-thumb{background:var(--goldd);border-radius:2px}
 button{cursor:pointer;font-family:var(--sans);border:none;outline:none;-webkit-tap-highlight-color:transparent;transition:all .15s}
 input,select{outline:none;font-family:var(--sans);-webkit-appearance:none}
 
 /* ── BOTTOM TABS ── */
 .tabs-bar {
- position:fixed;bottom:0;left:0;right:0;
- background:rgba(6,7,10,.96);
- backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
- border-top:1px solid var(--border);
- display:flex;
- padding:10px 0 calc(var(--sb) + 10px);
- z-index:100;
+  position:fixed;bottom:0;left:0;right:0;
+  background:rgba(6,7,10,.96);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-top:1px solid var(--border);
+  display:flex;
+  padding:10px 0 calc(var(--sb) + 10px);
+  z-index:100;
 }
 .tab-btn {
- flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
- background:transparent;color:var(--muted);font-size:10px;font-weight:500;padding:2px 0;
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  background:transparent;color:var(--muted);font-size:10px;font-weight:500;padding:2px 0;
 }
 .tab-btn.on { color:var(--gold); }
 .tab-btn .ico { font-size:22px;line-height:1; }
@@ -55,8 +55,8 @@ input,select{outline:none;font-family:var(--sans);-webkit-appearance:none}
 
 /* ── HEADER ── */
 .hdr {
- display:flex;justify-content:space-between;align-items:flex-end;
- padding-bottom:18px;border-bottom:1px solid var(--border);margin-bottom:20px;
+  display:flex;justify-content:space-between;align-items:flex-end;
+  padding-bottom:18px;border-bottom:1px solid var(--border);margin-bottom:20px;
 }
 .hdr-logo { font-family:var(--serif);font-size:32px;font-weight:700;line-height:1; }
 .hdr-logo span { color:var(--gold); }
@@ -71,10 +71,10 @@ input,select{outline:none;font-family:var(--sans);-webkit-appearance:none}
 .cal-grid { display:grid;grid-template-columns:repeat(7,1fr);gap:4px; }
 .cal-dn { text-align:center;font-size:10px;color:var(--muted);padding:4px 0;font-weight:600; }
 .cal-d {
- aspect-ratio:1;display:flex;align-items:center;justify-content:center;
- border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;
- border:1px solid var(--border);background:var(--sf);color:var(--text);
- transition:all .12s;
+  aspect-ratio:1;display:flex;align-items:center;justify-content:center;
+  border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;
+  border:1px solid var(--border);background:var(--sf);color:var(--text);
+  transition:all .12s;
 }
 .cal-d:active { background:var(--gold);color:#000; }
 .cal-d.today { border-color:var(--gold);color:var(--gold); }
@@ -83,8 +83,8 @@ input,select{outline:none;font-family:var(--sans);-webkit-appearance:none}
 
 /* ── BUTTONS ── */
 .btn {
- width:100%;padding:12px 16px;border-radius:9px;font-weight:600;font-size:14px;
- display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;
+  width:100%;padding:12px 16px;border-radius:9px;font-weight:600;font-size:14px;
+  display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;
 }
 .btn:active { transform:scale(.98);opacity:.9; }
 .btn:disabled { opacity:.4;cursor:not-allowed;transform:none; }
@@ -104,10 +104,10 @@ input,select{outline:none;font-family:var(--sans);-webkit-appearance:none}
 
 /* ── COURSE ROW ── */
 .crow {
- display:flex;align-items:center;gap:10px;
- padding:11px 13px;border-radius:9px;margin-bottom:6px;
- background:var(--card);border:1px solid var(--border);
- transition:border-color .15s;
+  display:flex;align-items:center;gap:10px;
+  padding:11px 13px;border-radius:9px;margin-bottom:6px;
+  background:var(--card);border:1px solid var(--border);
+  transition:border-color .15s;
 }
 .crow.jouable { border-left:3px solid var(--green); }
 .crow.jouable.checked { border-color:var(--green);background:rgba(34,181,102,.06); }
@@ -117,9 +117,9 @@ input,select{outline:none;font-family:var(--sans);-webkit-appearance:none}
 
 /* ── CHECKBOX ── */
 .cbox {
- width:22px;height:22px;border-radius:6px;border:2px solid var(--border);
- display:flex;align-items:center;justify-content:center;flex-shrink:0;
- background:var(--sf);transition:all .15s;cursor:pointer;
+  width:22px;height:22px;border-radius:6px;border:2px solid var(--border);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  background:var(--sf);transition:all .15s;cursor:pointer;
 }
 .cbox.on { background:var(--green);border-color:var(--green); }
 
@@ -168,107 +168,107 @@ input,select{outline:none;font-family:var(--sans);-webkit-appearance:none}
 <div class="toast" id="toast"></div>
 
 <!-- ══════════════════════════════════════
-    ONGLET JEUX
+     ONGLET JEUX
 ══════════════════════════════════════ -->
 <div class="page on" id="page-jeux">
 
- <!-- Header -->
- <div class="hdr">
-   <div>
-     <div class="hdr-eyebrow">CDCH · Système Expert</div>
-     <div class="hdr-logo">Bot <span>PMU</span></div>
-   </div>
-   <div style="text-align:right">
-     <div style="font-family:var(--serif);font-size:22px;font-weight:700;color:var(--gold)" id="hdr-date">—</div>
-     <div style="font-size:10px;color:var(--muted);text-transform:uppercase" id="hdr-day">—</div>
-   </div>
- </div>
+  <!-- Header -->
+  <div class="hdr">
+    <div>
+      <div class="hdr-eyebrow">CDCH · Système Expert</div>
+      <div class="hdr-logo">Bot <span>PMU</span></div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-family:var(--serif);font-size:22px;font-weight:700;color:var(--gold)" id="hdr-date">—</div>
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase" id="hdr-day">—</div>
+    </div>
+  </div>
 
- <!-- ── ÉTAPE 1 : CALENDRIER ── -->
- <div id="bloc-cal">
-   <div class="stitle">Choisir la date</div>
-   <div class="cal-wrap">
-     <div class="cal-nav-row">
-       <button class="cal-nav" onclick="calMove(-1)">‹</button>
-       <div class="cal-month" id="cal-label">—</div>
-       <button class="cal-nav" onclick="calMove(1)">›</button>
-     </div>
-     <div class="cal-grid" id="cal-grid"></div>
-   </div>
-   <button class="btn btn-gold" id="btn-valdate" onclick="validerDate()" style="font-size:16px;padding:15px;margin-top:14px">
-     Valider la date →
-   </button>
-   <div id="cal-hint" style="text-align:center;font-size:12px;color:var(--muted);margin-top:6px">Sélectionnez d'abord une date</div>
- </div>
+  <!-- ── ÉTAPE 1 : CALENDRIER ── -->
+  <div id="bloc-cal">
+    <div class="stitle">Choisir la date</div>
+    <div class="cal-wrap">
+      <div class="cal-nav-row">
+        <button class="cal-nav" onclick="calMove(-1)">‹</button>
+        <div class="cal-month" id="cal-label">—</div>
+        <button class="cal-nav" onclick="calMove(1)">›</button>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+    </div>
+    <button class="btn btn-gold" id="btn-valdate" onclick="validerDate()" style="font-size:16px;padding:15px;margin-top:14px">
+      Valider la date →
+    </button>
+    <div id="cal-hint" style="text-align:center;font-size:12px;color:var(--muted);margin-top:6px">Sélectionnez d'abord une date</div>
+  </div>
 
- <!-- ── ÉTAPE 2 : PROGRAMME + SCAN 1 ── -->
- <div id="bloc-prog" class="hidden">
-   <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-     <button class="btn btn-ghost btn-sm" onclick="retourCal()">← Calendrier</button>
-     <div style="font-family:var(--serif);font-size:18px;font-weight:700;color:var(--gold)" id="prog-date-label">—</div>
-   </div>
+  <!-- ── ÉTAPE 2 : PROGRAMME + SCAN 1 ── -->
+  <div id="bloc-prog" class="hidden">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="retourCal()">← Calendrier</button>
+      <div style="font-family:var(--serif);font-size:18px;font-weight:700;color:var(--gold)" id="prog-date-label">—</div>
+    </div>
 
-   <div class="logbox" id="prog-log">En attente…</div>
+    <div class="logbox" id="prog-log">En attente…</div>
 
-   <!-- Programme complet (avant scan) -->
-   <div id="prog-list" class="hidden">
-     <div class="stitle">Programme de trot du jour</div>
-     <div id="prog-courses"></div>
-     <button class="btn btn-gold" id="btn-scan1" onclick="lancerScan1()">
-       🔍 Scan 1 — Expert N°1 (Filtrer les courses jouables)
-     </button>
-   </div>
- </div>
+    <!-- Programme complet (avant scan) -->
+    <div id="prog-list" class="hidden">
+      <div class="stitle">Programme de trot du jour</div>
+      <div id="prog-courses"></div>
+      <button class="btn btn-gold" id="btn-scan1" onclick="lancerScan1()" style="margin-bottom:60px">
+        🔍 Scan 1 — Expert N°1 (Filtrer les courses jouables)
+      </button>
+    </div>
+  </div>
 
- <!-- ── ÉTAPE 3 : RÉSULTATS SCAN 1 + CASES À COCHER ── -->
- <div id="bloc-scan1" class="hidden">
-   <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-     <button class="btn btn-ghost btn-sm" onclick="retourProg()">← Programme</button>
-     <div style="font-size:13px;color:var(--muted)" id="scan1-summary">—</div>
-   </div>
+  <!-- ── ÉTAPE 3 : RÉSULTATS SCAN 1 + CASES À COCHER ── -->
+  <div id="bloc-scan1" class="hidden">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <button class="btn btn-ghost btn-sm" onclick="retourProg()">← Programme</button>
+      <div style="font-size:13px;color:var(--muted)" id="scan1-summary">—</div>
+    </div>
 
-   <div class="stitle">Courses analysées — cochez les courses à analyser</div>
-   <div id="scan1-courses"></div>
+    <div class="stitle">Courses analysées — cochez les courses à analyser</div>
+    <div id="scan1-courses"></div>
 
-   <button class="btn btn-green" id="btn-scan2" onclick="lancerScan2()" disabled style="margin-bottom:40px">
-     🔬 Scan 2 — Expert N°2 (Analyser les chevaux)
-   </button>
- </div>
+    <button class="btn btn-green" id="btn-scan2" onclick="lancerScan2()" disabled style="margin-bottom:40px">
+      🔬 Scan 2 — Expert N°2 (Analyser les chevaux)
+    </button>
+  </div>
 
- <!-- ── ÉTAPE 4 : RÉSULTATS SCAN 2 ── -->
- <div id="bloc-scan2" class="hidden">
-   <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-     <button class="btn btn-ghost btn-sm" onclick="retourScan1()">← Courses</button>
-     <div style="font-size:13px;color:var(--muted)">Sélection des chevaux</div>
-   </div>
-   <div class="logbox" id="scan2-log">En attente…</div>
-   <div id="scan2-results"></div>
-   <div style="height:50px"></div>
- </div>
+  <!-- ── ÉTAPE 4 : RÉSULTATS SCAN 2 ── -->
+  <div id="bloc-scan2" class="hidden">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <button class="btn btn-ghost btn-sm" onclick="retourScan1()">← Courses</button>
+      <div style="font-size:13px;color:var(--muted)">Sélection des chevaux</div>
+    </div>
+    <div class="logbox" id="scan2-log">En attente…</div>
+    <div id="scan2-results"></div>
+    <div style="height:50px"></div>
+  </div>
 
 </div>
 
 <!-- ══════════════════════════════════════
-    ONGLET BILAN
+     ONGLET BILAN
 ══════════════════════════════════════ -->
 <div class="page" id="page-bilan">
- <div style="padding-top:calc(var(--st)+16px)">
-   <div class="hdr-eyebrow" style="margin-bottom:6px">Performance & Statistiques</div>
-   <div class="hdr-logo" style="margin-bottom:20px">Bilan <span>CDCH</span></div>
-   <div id="bilan-content"></div>
- </div>
+  <div style="padding-top:calc(var(--st)+16px)">
+    <div class="hdr-eyebrow" style="margin-bottom:6px">Performance & Statistiques</div>
+    <div class="hdr-logo" style="margin-bottom:20px">Bilan <span>CDCH</span></div>
+    <div id="bilan-content"></div>
+  </div>
 </div>
 
 <!-- ══════════════════════════════════════
-    BARRE D'ONGLETS
+     BARRE D'ONGLETS
 ══════════════════════════════════════ -->
 <nav class="tabs-bar">
- <button class="tab-btn on" onclick="goPage('jeux')" id="nav-jeux">
-   <span class="ico">🎯</span>Jeux
- </button>
- <button class="tab-btn" onclick="goPage('bilan')" id="nav-bilan">
-   <span class="ico">📊</span>Bilan
- </button>
+  <button class="tab-btn on" onclick="goPage('jeux')" id="nav-jeux">
+    <span class="ico">🎯</span>Jeux
+  </button>
+  <button class="tab-btn" onclick="goPage('bilan')" id="nav-bilan">
+    <span class="ico">📊</span>Bilan
+  </button>
 </nav>
 
 <script>
@@ -286,13 +286,13 @@ const DAYS = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
 //  ÉTAT GLOBAL
 // ══════════════════════════════════════════════════════
 const S = {
- selDate: null,        // Date JS sélectionnée
- calY: new Date().getFullYear(),
- calM: new Date().getMonth(),
- allCourses: [],       // Toutes les courses de trot
- scoredCourses: [],    // Courses scorées par E1
- checkedIds: new Set(),// IDs des courses cochées
- e2Results: [],        // Résultats E2 par course
+  selDate: null,        // Date JS sélectionnée
+  calY: new Date().getFullYear(),
+  calM: new Date().getMonth(),
+  allCourses: [],       // Toutes les courses de trot
+  scoredCourses: [],    // Courses scorées par E1
+  checkedIds: new Set(),// IDs des courses cochées
+  e2Results: [],        // Résultats E2 par course
 };
 
 // ══════════════════════════════════════════════════════
@@ -308,19 +308,19 @@ const dbUpd = (id,upd) => { const d=dbGet(); const i=d.analyses.findIndex(a=>a.i
 //  NAVIGATION
 // ══════════════════════════════════════════════════════
 function goPage(name) {
- ['jeux','bilan'].forEach(n => {
-   document.getElementById('page-'+n).classList.toggle('on', n===name);
-   document.getElementById('nav-'+n).classList.toggle('on', n===name);
- });
- window.scrollTo({top:0});
- if (name==='bilan') renderBilan();
+  ['jeux','bilan'].forEach(n => {
+    document.getElementById('page-'+n).classList.toggle('on', n===name);
+    document.getElementById('nav-'+n).classList.toggle('on', n===name);
+  });
+  window.scrollTo({top:0});
+  if (name==='bilan') renderBilan();
 }
 
 function showBloc(name) {
- ['cal','prog','scan1','scan2'].forEach(b => {
-   document.getElementById('bloc-'+b).classList.toggle('hidden', b!==name);
- });
- window.scrollTo({top:0});
+  ['cal','prog','scan1','scan2'].forEach(b => {
+    document.getElementById('bloc-'+b).classList.toggle('hidden', b!==name);
+  });
+  window.scrollTo({top:0});
 }
 
 function retourCal()   { showBloc('cal'); }
@@ -331,139 +331,139 @@ function retourScan1() { showBloc('scan1'); }
 //  CALENDRIER
 // ══════════════════════════════════════════════════════
 function renderCal() {
- const {calY,calM} = S;
- document.getElementById('cal-label').textContent = `${MONTHS[calM]} ${calY}`;
- const today = new Date(); today.setHours(0,0,0,0);
- const first = new Date(calY,calM,1);
- const last  = new Date(calY,calM+1,0);
- const dow   = (first.getDay()+6)%7; // Lundi=0
+  const {calY,calM} = S;
+  document.getElementById('cal-label').textContent = `${MONTHS[calM]} ${calY}`;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const first = new Date(calY,calM,1);
+  const last  = new Date(calY,calM+1,0);
+  const dow   = (first.getDay()+6)%7; // Lundi=0
 
- let h = ['L','M','M','J','V','S','D'].map(d=>`<div class="cal-dn">${d}</div>`).join('');
- for(let i=0;i<dow;i++) h+='<div class="cal-d empty"></div>';
+  let h = ['L','M','M','J','V','S','D'].map(d=>`<div class="cal-dn">${d}</div>`).join('');
+  for(let i=0;i<dow;i++) h+='<div class="cal-d empty"></div>';
 
- for(let d=1;d<=last.getDate();d++){
-   const dt = new Date(calY,calM,d);
-   const isToday = dt.getTime()===today.getTime();
-   const isSel   = S.selDate && dt.getTime()===S.selDate.getTime();
-   const cls = [isToday?'today':'', isSel?'sel':''].filter(Boolean).join(' ');
-   h += `<div class="cal-d ${cls}" onclick="selDate(${calY},${calM},${d})">${d}</div>`;
- }
- document.getElementById('cal-grid').innerHTML = h;
+  for(let d=1;d<=last.getDate();d++){
+    const dt = new Date(calY,calM,d);
+    const isToday = dt.getTime()===today.getTime();
+    const isSel   = S.selDate && dt.getTime()===S.selDate.getTime();
+    const cls = [isToday?'today':'', isSel?'sel':''].filter(Boolean).join(' ');
+    h += `<div class="cal-d ${cls}" onclick="selDate(${calY},${calM},${d})">${d}</div>`;
+  }
+  document.getElementById('cal-grid').innerHTML = h;
 }
 
 function calMove(dir) {
- S.calM += dir;
- if(S.calM<0){S.calM=11;S.calY--;}
- if(S.calM>11){S.calM=0;S.calY++;}
- renderCal();
+  S.calM += dir;
+  if(S.calM<0){S.calM=11;S.calY--;}
+  if(S.calM>11){S.calM=0;S.calY++;}
+  renderCal();
 }
 
 function selDate(y,m,d) {
- S.selDate = new Date(y,m,d);
- renderCal();
- const hint = document.getElementById('cal-hint');
- if(hint) hint.innerHTML = `✅ Date sélectionnée : <b style="color:var(--gold)">${String(d).padStart(2,'0')}/${String(m+1).padStart(2,'0')}/${y}</b>`;
+  S.selDate = new Date(y,m,d);
+  renderCal();
+  const hint = document.getElementById('cal-hint');
+  if(hint) hint.innerHTML = `✅ Date sélectionnée : <b style="color:var(--gold)">${String(d).padStart(2,'0')}/${String(m+1).padStart(2,'0')}/${y}</b>`;
 }
 
 function fmtPMU(dt) {
- return String(dt.getDate()).padStart(2,'0')+String(dt.getMonth()+1).padStart(2,'0')+dt.getFullYear();
+  return String(dt.getDate()).padStart(2,'0')+String(dt.getMonth()+1).padStart(2,'0')+dt.getFullYear();
 }
 function fmtFR(dt) {
- return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear();
+  return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear();
 }
 
 // ══════════════════════════════════════════════════════
 //  ÉTAPE 2 — Charger le programme
 // ══════════════════════════════════════════════════════
 async function validerDate() {
- if(!S.selDate) return;
- const d = S.selDate;
- const label = fmtFR(d);
+  if(!S.selDate) return;
+  const d = S.selDate;
+  const label = fmtFR(d);
 
- // Update header
- document.getElementById('hdr-date').textContent = d.getDate()+' '+MONTHS_S[d.getMonth()];
- document.getElementById('hdr-day').textContent = DAYS[d.getDay()];
- document.getElementById('prog-date-label').textContent = label;
+  // Update header
+  document.getElementById('hdr-date').textContent = d.getDate()+' '+MONTHS_S[d.getMonth()];
+  document.getElementById('hdr-day').textContent = DAYS[d.getDay()];
+  document.getElementById('prog-date-label').textContent = label;
 
- showBloc('prog');
- setLog('prog','🌐 Récupération du programme PMU du '+label+'…','dim');
- document.getElementById('prog-list').classList.add('hidden');
+  showBloc('prog');
+  setLog('prog','🌐 Récupération du programme PMU du '+label+'…','dim');
+  document.getElementById('prog-list').classList.add('hidden');
 
- try {
-   const res = await fetch(`${BASE}/api/programme?date=${fmtPMU(d)}`);
-   if(!res.ok) throw new Error('HTTP '+res.status);
-   const json = await res.json();
-   if(json.error) throw new Error(json.error);
+  try {
+    const res = await fetch(`${BASE}/api/programme?date=${fmtPMU(d)}`);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const json = await res.json();
+    if(json.error) throw new Error(json.error);
 
-   const reunions = json?.programme?.reunions || [];
-   if(!reunions.length) throw new Error('Aucune réunion trouvée pour cette date.');
+    const reunions = json?.programme?.reunions || [];
+    if(!reunions.length) throw new Error('Aucune réunion trouvée pour cette date.');
 
-   // Extraire toutes les courses de trot
-   S.allCourses = [];
-   for(const r of reunions){
-     const hippo = r.hippodrome?.libelleLong || r.hippodrome?.libelleCourt || '';
-     const rNum  = r.numOfficiel || r.numReunion || '?';
-     for(const c of (r.courses||[])){
-       const disc = (c.discipline||c.specialite||'').toUpperCase();
-       // Trot ATTELÉ uniquement — on exclut le monté et les autres disciplines
-       if(!disc.includes('ATTELE')) continue;
-       const cond  = c.categorieParticularite||c.conditions||'';
-       const heure = c.heureDepart?String(c.heureDepart).replace(/(\d{2})(\d{2})$/,'$1h$2'):'';
-       const part  = c.nombreDeclaresPartants||c.nombrePartants;
-       const isQ   = (c.libelle||'').toLowerCase().includes('quinté')||(c.categorieStatut||'').includes('QUINTE');
-       S.allCourses.push({
-         id:`R${rNum}C${c.numOrdre}`,
-         reunion:String(rNum), courseNum:String(c.numOrdre),
-         hippodrome:hippo,
-         nom:c.libelle||c.libelleCourt||'',
-         discipline:'Attelé',
-         distance:c.distance, partants:part,
-         allocation:c.montantAlloue||null,
-         conditions:cond, heure, isQuinte:isQ,
-       });
-     }
-   }
+    // Extraire toutes les courses de trot
+    S.allCourses = [];
+    for(const r of reunions){
+      const hippo = r.hippodrome?.libelleLong || r.hippodrome?.libelleCourt || '';
+      const rNum  = r.numOfficiel || r.numReunion || '?';
+      for(const c of (r.courses||[])){
+        const disc = (c.discipline||c.specialite||'').toUpperCase();
+        // Trot ATTELÉ uniquement — on exclut le monté et les autres disciplines
+        if(!disc.includes('ATTELE')) continue;
+        const cond  = c.categorieParticularite||c.conditions||'';
+        const heure = c.heureDepart?String(c.heureDepart).replace(/(\d{2})(\d{2})$/,'$1h$2'):'';
+        const part  = c.nombreDeclaresPartants||c.nombrePartants;
+        const isQ   = (c.libelle||'').toLowerCase().includes('quinté')||(c.categorieStatut||'').includes('QUINTE');
+        S.allCourses.push({
+          id:`R${rNum}C${c.numOrdre}`,
+          reunion:String(rNum), courseNum:String(c.numOrdre),
+          hippodrome:hippo,
+          nom:c.libelle||c.libelleCourt||'',
+          discipline:'Attelé',
+          distance:c.distance, partants:part,
+          allocation:c.montantAlloue||null,
+          conditions:cond, heure, isQuinte:isQ,
+        });
+      }
+    }
 
-   if(!S.allCourses.length) throw new Error('Aucune course de trot trouvée.');
-   setLog('prog',`✅ ${S.allCourses.length} course(s) de trot trouvées`,'green');
-   renderProgramme();
-   document.getElementById('prog-list').classList.remove('hidden');
+    if(!S.allCourses.length) throw new Error('Aucune course de trot trouvée.');
+    setLog('prog',`✅ ${S.allCourses.length} course(s) de trot trouvées`,'green');
+    renderProgramme();
+    document.getElementById('prog-list').classList.remove('hidden');
 
- } catch(e) {
-   setLog('prog','❌ '+e.message,'red');
- }
+  } catch(e) {
+    setLog('prog','❌ '+e.message,'red');
+  }
 }
 
 function renderProgramme() {
- const scC = v => !v||isNaN(v)?'var(--muted)':v>=4?'var(--green)':v>=3?'var(--gold)':v>=2?'var(--orange)':'var(--red)';
- let h = '';
- // Grouper par réunion
- const byR = {};
- S.allCourses.forEach(c => {
-   if(!byR[c.reunion]) byR[c.reunion]=[];
-   byR[c.reunion].push(c);
- });
- for(const [r, courses] of Object.entries(byR)){
-   const hippo = courses[0].hippodrome;
-   h += `<div style="margin-bottom:14px">
-     <div style="font-family:var(--serif);font-size:14px;font-weight:700;color:var(--gold);margin-bottom:6px">R${r} — ${hippo}</div>`;
-   for(const c of courses){
-     h += `<div class="crow">
-       <div style="flex:1">
-         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:2px">
-           <span style="font-family:var(--mono);font-size:11px;color:var(--muted)">${c.id}</span>
-           ${c.heure?`<span style="font-size:12px;color:var(--muted)">${c.heure}</span>`:''}
-           ${c.isQuinte?`<span class="chip" style="background:rgba(201,165,74,.15);color:var(--gold)">Quinté+</span>`:''}
-         </div>
-         <div style="font-size:13px;font-weight:600">${c.nom||'—'}</div>
-         <div style="font-size:11px;color:var(--muted);margin-top:2px">${c.discipline} · ${c.distance||'?'}m · ${c.partants||'?'} partants${c.allocation?' · '+(c.allocation/1000).toFixed(0)+'k€':''}</div>
-       </div>
-       <span style="font-size:11px;color:var(--muted)">→</span>
-     </div>`;
-   }
-   h += '</div>';
- }
- document.getElementById('prog-courses').innerHTML = h;
+  const scC = v => !v||isNaN(v)?'var(--muted)':v>=4?'var(--green)':v>=3?'var(--gold)':v>=2?'var(--orange)':'var(--red)';
+  let h = '';
+  // Grouper par réunion
+  const byR = {};
+  S.allCourses.forEach(c => {
+    if(!byR[c.reunion]) byR[c.reunion]=[];
+    byR[c.reunion].push(c);
+  });
+  for(const [r, courses] of Object.entries(byR)){
+    const hippo = courses[0].hippodrome;
+    h += `<div style="margin-bottom:14px">
+      <div style="font-family:var(--serif);font-size:14px;font-weight:700;color:var(--gold);margin-bottom:6px">R${r} — ${hippo}</div>`;
+    for(const c of courses){
+      h += `<div class="crow">
+        <div style="flex:1">
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:2px">
+            <span style="font-family:var(--mono);font-size:11px;color:var(--muted)">${c.id}</span>
+            ${c.heure?`<span style="font-size:12px;color:var(--muted)">${c.heure}</span>`:''}
+            ${c.isQuinte?`<span class="chip" style="background:rgba(201,165,74,.15);color:var(--gold)">Quinté+</span>`:''}
+          </div>
+          <div style="font-size:13px;font-weight:600">${c.nom||'—'}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${c.discipline} · ${c.distance||'?'}m · ${c.partants||'?'} partants${c.allocation?' · '+(c.allocation/1000).toFixed(0)+'k€':''}</div>
+        </div>
+        <span style="font-size:11px;color:var(--muted)">→</span>
+      </div>`;
+    }
+    h += '</div>';
+  }
+  document.getElementById('prog-courses').innerHTML = h;
 }
 
 // ══════════════════════════════════════════════════════
@@ -478,99 +478,99 @@ const spot = c => { const s=(c||'').toLowerCase(); return s.includes('autostart'
 const isExclu = c => ['apprenti','lads','amateur','gentlemen','gentleman','ladies'].some(k=>(c||'').toLowerCase().includes(k));
 
 function scoreE1(c) {
- if(isExclu(c.conditions)) return {verdict:'ÉLIMINÉE',reason:'Apprentis/amateurs',total:0,scores:null};
- const np = parseInt(c.partants)||0;
- if(np > 0 && np < 8) return {verdict:'ÉLIMINÉE',reason:`${np} partants (<8 — les 3 places ne paient pas)`,total:0,scores:null};
- const p=sp(c.partants);
- if(p==='ELIM') return {verdict:'ÉLIMINÉE',reason:`${c.partants} partants ≥18`,total:0,scores:null};
- const h=sh(c.hippodrome), d=sd(c.distance), g=sg(c.conditions), t=spot(c.conditions);
- const scores={H:h,D:d,P:p,G:g,Pot:t};
- const total=[h,d,p,g,t].filter(v=>typeof v==='number').reduce((a,b)=>a+b,0);
- if(total>16)  return {verdict:'JOUABLE',  total,scores};
- if(total>=14) return {verdict:'PRUDENCE',  total,scores};
- return             {verdict:'À ÉVITER', total,scores};
+  if(isExclu(c.conditions)) return {verdict:'ÉLIMINÉE',reason:'Apprentis/amateurs',total:0,scores:null};
+  const np = parseInt(c.partants)||0;
+  if(np > 0 && np < 8) return {verdict:'ÉLIMINÉE',reason:`${np} partants (<8 — les 3 places ne paient pas)`,total:0,scores:null};
+  const p=sp(c.partants);
+  if(p==='ELIM') return {verdict:'ÉLIMINÉE',reason:`${c.partants} partants ≥18`,total:0,scores:null};
+  const h=sh(c.hippodrome), d=sd(c.distance), g=sg(c.conditions), t=spot(c.conditions);
+  const scores={H:h,D:d,P:p,G:g,Pot:t};
+  const total=[h,d,p,g,t].filter(v=>typeof v==='number').reduce((a,b)=>a+b,0);
+  if(total>16)  return {verdict:'JOUABLE',  total,scores};
+  if(total>=14) return {verdict:'PRUDENCE',  total,scores};
+  return             {verdict:'À ÉVITER', total,scores};
 }
 
 // ══════════════════════════════════════════════════════
 //  ÉTAPE 3 — SCAN 1
 // ══════════════════════════════════════════════════════
 const VUI = {
- JOUABLE:  {i:'🔥',c:'var(--green)', b:'var(--greenb)',cls:'jouable'},
- PRUDENCE: {i:'⚠️',c:'var(--orange)',b:'var(--orangeb)',cls:'prudence'},
- 'À ÉVITER':{i:'❌',c:'var(--red)',  b:'var(--redb)',  cls:'eviter'},
- ÉLIMINÉE: {i:'🚫',c:'var(--muted)',b:'var(--card)',   cls:'eliminee'},
+  JOUABLE:  {i:'🔥',c:'var(--green)', b:'var(--greenb)',cls:'jouable'},
+  PRUDENCE: {i:'⚠️',c:'var(--orange)',b:'var(--orangeb)',cls:'prudence'},
+  'À ÉVITER':{i:'❌',c:'var(--red)',  b:'var(--redb)',  cls:'eviter'},
+  ÉLIMINÉE: {i:'🚫',c:'var(--muted)',b:'var(--card)',   cls:'eliminee'},
 };
 const scC = v => !v||isNaN(v)?'var(--muted)':v>=4?'var(--green)':v>=3?'var(--gold)':v>=2?'var(--orange)':'var(--red)';
 
 function lancerScan1() {
- S.scoredCourses = S.allCourses.map(c => ({...c,...scoreE1(c)}))
-   .sort((a,b)=>{const o={JOUABLE:0,PRUDENCE:1,'À ÉVITER':2,ÉLIMINÉE:3};return(o[a.verdict]??9)-(o[b.verdict]??9)||((b.total||0)-(a.total||0));});
+  S.scoredCourses = S.allCourses.map(c => ({...c,...scoreE1(c)}))
+    .sort((a,b)=>{const o={JOUABLE:0,PRUDENCE:1,'À ÉVITER':2,ÉLIMINÉE:3};return(o[a.verdict]??9)-(o[b.verdict]??9)||((b.total||0)-(a.total||0));});
 
- S.checkedIds.clear();
- const jouables = S.scoredCourses.filter(c=>c.verdict==='JOUABLE').length;
- document.getElementById('scan1-summary').textContent = `${jouables} jouable(s) sur ${S.scoredCourses.length} courses`;
+  S.checkedIds.clear();
+  const jouables = S.scoredCourses.filter(c=>c.verdict==='JOUABLE').length;
+  document.getElementById('scan1-summary').textContent = `${jouables} jouable(s) sur ${S.scoredCourses.length} courses`;
 
- renderScan1();
- showBloc('scan1');
+  renderScan1();
+  showBloc('scan1');
 }
 
 function renderScan1() {
- let h = '';
- for(const c of S.scoredCourses){
-   const ui = VUI[c.verdict]||VUI['À ÉVITER'];
-   const isJ = c.verdict==='JOUABLE';
-   const isChk = S.checkedIds.has(c.id);
-   const dots = c.scores ? Object.entries(c.scores).map(([k,v])=>
-     `<div title="${k}" style="width:24px;height:24px;border-radius:5px;background:${scC(v)}18;color:${scC(v)};display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:700">${typeof v==='number'?v:'🚫'}</div>`
-   ).join('') : '';
+  let h = '';
+  for(const c of S.scoredCourses){
+    const ui = VUI[c.verdict]||VUI['À ÉVITER'];
+    const isJ = c.verdict==='JOUABLE';
+    const isChk = S.checkedIds.has(c.id);
+    const dots = c.scores ? Object.entries(c.scores).map(([k,v])=>
+      `<div title="${k}" style="width:24px;height:24px;border-radius:5px;background:${scC(v)}18;color:${scC(v)};display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:700">${typeof v==='number'?v:'🚫'}</div>`
+    ).join('') : '';
 
-   h += `<div class="crow ${ui.cls}${isJ&&isChk?' checked':''}" id="crow-${c.id}">
-     ${isJ?`<div class="cbox${isChk?' on':''}" onclick="toggleCheck('${c.id}')" id="chk-${c.id}">${isChk?'<svg width="12" height="12" viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3" stroke="#000" stroke-width="2" fill="none" stroke-linecap="round"/></svg>':''}</div>`
-          :`<div style="width:22px;height:22px;flex-shrink:0"></div>`}
-     <div style="flex:1;min-width:0">
-       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:2px">
-         <span style="font-family:var(--mono);font-size:11px;color:var(--muted)">${c.id}</span>
-         ${c.heure?`<span style="font-size:11px;color:var(--muted)">${c.heure}</span>`:''}
-         ${c.isQuinte?`<span class="chip" style="background:rgba(201,165,74,.15);color:var(--gold);font-size:10px">Q+</span>`:''}
-       </div>
-       <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.nom||c.hippodrome}</div>
-       <div style="font-size:10px;color:var(--muted);margin-top:1px">${c.hippodrome} · ${c.distance||'?'}m · ${c.partants||'?'} partants</div>
-       <div style="display:flex;gap:3px;margin-top:5px">${dots}</div>
-     </div>
-     <div class="vmin" style="background:${ui.b};color:${ui.c}">
-       <div style="font-size:16px">${ui.i}</div>
-       ${c.total>0?`<div style="font-family:var(--mono);font-size:10px;font-weight:700">${c.total}/20</div>`:''}
-     </div>
-   </div>`;
- }
- document.getElementById('scan1-courses').innerHTML = h;
- updateScan2Btn();
+    h += `<div class="crow ${ui.cls}${isJ&&isChk?' checked':''}" id="crow-${c.id}">
+      ${isJ?`<div class="cbox${isChk?' on':''}" onclick="toggleCheck('${c.id}')" id="chk-${c.id}">${isChk?'<svg width="12" height="12" viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3" stroke="#000" stroke-width="2" fill="none" stroke-linecap="round"/></svg>':''}</div>`
+           :`<div style="width:22px;height:22px;flex-shrink:0"></div>`}
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:2px">
+          <span style="font-family:var(--mono);font-size:11px;color:var(--muted)">${c.id}</span>
+          ${c.heure?`<span style="font-size:11px;color:var(--muted)">${c.heure}</span>`:''}
+          ${c.isQuinte?`<span class="chip" style="background:rgba(201,165,74,.15);color:var(--gold);font-size:10px">Q+</span>`:''}
+        </div>
+        <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.nom||c.hippodrome}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:1px">${c.hippodrome} · ${c.distance||'?'}m · ${c.partants||'?'} partants</div>
+        <div style="display:flex;gap:3px;margin-top:5px">${dots}</div>
+      </div>
+      <div class="vmin" style="background:${ui.b};color:${ui.c}">
+        <div style="font-size:16px">${ui.i}</div>
+        ${c.total>0?`<div style="font-family:var(--mono);font-size:10px;font-weight:700">${c.total}/20</div>`:''}
+      </div>
+    </div>`;
+  }
+  document.getElementById('scan1-courses').innerHTML = h;
+  updateScan2Btn();
 }
 
 function toggleCheck(id) {
- if(!S.scoredCourses.find(c=>c.id===id&&c.verdict==='JOUABLE')) return;
- if(S.checkedIds.has(id)) S.checkedIds.delete(id);
- else S.checkedIds.add(id);
+  if(!S.scoredCourses.find(c=>c.id===id&&c.verdict==='JOUABLE')) return;
+  if(S.checkedIds.has(id)) S.checkedIds.delete(id);
+  else S.checkedIds.add(id);
 
- // Update checkbox UI
- const chk = document.getElementById('chk-'+id);
- const row = document.getElementById('crow-'+id);
- if(chk){
-   const isOn = S.checkedIds.has(id);
-   chk.className = 'cbox'+(isOn?' on':'');
-   chk.innerHTML = isOn?'<svg width="12" height="12" viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3" stroke="#000" stroke-width="2" fill="none" stroke-linecap="round"/></svg>':'';
-   if(row) row.className = 'crow jouable'+(isOn?' checked':'');
- }
- updateScan2Btn();
+  // Update checkbox UI
+  const chk = document.getElementById('chk-'+id);
+  const row = document.getElementById('crow-'+id);
+  if(chk){
+    const isOn = S.checkedIds.has(id);
+    chk.className = 'cbox'+(isOn?' on':'');
+    chk.innerHTML = isOn?'<svg width="12" height="12" viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3" stroke="#000" stroke-width="2" fill="none" stroke-linecap="round"/></svg>':'';
+    if(row) row.className = 'crow jouable'+(isOn?' checked':'');
+  }
+  updateScan2Btn();
 }
 
 function updateScan2Btn() {
- document.getElementById('btn-scan2').disabled = S.checkedIds.size === 0;
- if(S.checkedIds.size>0){
-   document.getElementById('btn-scan2').textContent = `🔬 Scan 2 — Analyser ${S.checkedIds.size} course(s) sélectionnée(s)`;
- } else {
-   document.getElementById('btn-scan2').textContent = '🔬 Scan 2 — Expert N°2 (cochez une course)';
- }
+  document.getElementById('btn-scan2').disabled = S.checkedIds.size === 0;
+  if(S.checkedIds.size>0){
+    document.getElementById('btn-scan2').textContent = `🔬 Scan 2 — Analyser ${S.checkedIds.size} course(s) sélectionnée(s)`;
+  } else {
+    document.getElementById('btn-scan2').textContent = '🔬 Scan 2 — Expert N°2 (cochez une course)';
+  }
 }
 
 // ══════════════════════════════════════════════════════
@@ -581,256 +581,256 @@ const TOP_CUM = ['bazire','duvaldestin','abrivard','guarato','briand'];
 const NUM_STARS=[4,5,6], NUM_ELIM=[1,2,10,11,17,18], MOIS_HIV=[10,11,12,1,2,3];
 
 const calcVM = courses => {
- if(!courses||!courses.length) return null;
- const c3=courses.slice(0,3);
- const idx=c3.map(c=>{const p=(c.place||'').toString().toUpperCase();const pn=isNaN(parseInt(p))||['D','A','T'].includes(p)||parseInt(p)>10?10:parseInt(p);return c.alloc>0?(100000/c.alloc)*pn:10;});
- const total=idx.reduce((a,b)=>a+b,0);
- return {indices:idx,total,indice:parseFloat((total/c3.length).toFixed(2))};
+  if(!courses||!courses.length) return null;
+  const c3=courses.slice(0,3);
+  const idx=c3.map(c=>{const p=(c.place||'').toString().toUpperCase();const pn=isNaN(parseInt(p))||['D','A','T'].includes(p)||parseInt(p)>10?10:parseInt(p);return c.alloc>0?(100000/c.alloc)*pn:10;});
+  const total=idx.reduce((a,b)=>a+b,0);
+  return {indices:idx,total,indice:parseFloat((total/c3.length).toFixed(2))};
 };
 
 function scoreE2(p, course) {
- const pts=[];
- const mois=new Date().getMonth()+1;
- const num=parseInt(p.numPmu||p.numero)||0;
- const driver=(p.driver||p.nomJockey||'').toLowerCase();
- const entr=(p.entraineur||p.nomEntraineur||'').toLowerCase();
- const musique=p.musique||'';
- const gains=parseFloat(p.gainsParticipant?.gainsCarriere||0);
- const gainsAnnee=parseFloat(p.gainsParticipant?.gainsAnneeEnCours||0);
- const gainsAnneePrec=parseFloat(p.gainsParticipant?.gainsAnneePrecedente||0);
- const allocJ=parseFloat(course.allocation)||0;
- const nbCourses=parseInt(p.nombreCourses)||0;
- const nbVict=parseInt(p.nombreVictoires)||0;
- const nbPlaces=parseInt(p.nombrePlaces)||0;
- const deferre=(p.deferre||'').toUpperCase();
- const favori=p.dernierRapportReference?.favoris||p.dernierRapportDirect?.favoris||false;
- const cote=parseFloat(p.dernierRapportReference?.rapport||p.dernierRapportDirect?.rapport||99);
- const avis=(p.avisEntraineur||'').toUpperCase();
- const driverChange=p.driverChange;
- const rk=parseInt(p.reductionKilometrique)||0; // ex: 71700 = 1'11"7
+  const pts=[];
+  const mois=new Date().getMonth()+1;
+  const num=parseInt(p.numPmu||p.numero)||0;
+  const driver=(p.driver||p.nomJockey||'').toLowerCase();
+  const entr=(p.entraineur||p.nomEntraineur||'').toLowerCase();
+  const musique=p.musique||'';
+  const gains=parseFloat(p.gainsParticipant?.gainsCarriere||0);
+  const gainsAnnee=parseFloat(p.gainsParticipant?.gainsAnneeEnCours||0);
+  const gainsAnneePrec=parseFloat(p.gainsParticipant?.gainsAnneePrecedente||0);
+  const allocJ=parseFloat(course.allocation)||0;
+  const nbCourses=parseInt(p.nombreCourses)||0;
+  const nbVict=parseInt(p.nombreVictoires)||0;
+  const nbPlaces=parseInt(p.nombrePlaces)||0;
+  const deferre=(p.deferre||'').toUpperCase();
+  const favori=p.dernierRapportReference?.favoris||p.dernierRapportDirect?.favoris||false;
+  const cote=parseFloat(p.dernierRapportReference?.rapport||p.dernierRapportDirect?.rapport||99);
+  const avis=(p.avisEntraineur||'').toUpperCase();
+  const driverChange=p.driverChange;
+  const rk=parseInt(p.reductionKilometrique)||0; // ex: 71700 = 1'11"7
 
- // 1. Numéro autostart (José Coves)
- if(NUM_STARS.includes(num)) pts.push({l:`N°${num} favori autostart (4,5,6)`,p:1});
- else if(NUM_ELIM.includes(num)) pts.push({l:`N°${num} défavorable`,p:-1});
+  // 1. Numéro autostart (José Coves)
+  if(NUM_STARS.includes(num)) pts.push({l:`N°${num} favori autostart (4,5,6)`,p:1});
+  else if(NUM_ELIM.includes(num)) pts.push({l:`N°${num} défavorable`,p:-1});
 
- // 2. Musique régulière (commence par 1, sans D récent)
- if(musique){
-   const clean=musique.replace(/\(\d+\)/g,''); // retire les (25)
-   const f=clean.trim()[0];
-   const debutSansD=!clean.slice(0,6).toUpperCase().includes('D');
-   if(f==='1'&&debutSansD) pts.push({l:'Musique régulière (1er récent, sans D)',p:1});
- }
+  // 2. Musique régulière (commence par 1, sans D récent)
+  if(musique){
+    const clean=musique.replace(/\(\d+\)/g,''); // retire les (25)
+    const f=clean.trim()[0];
+    const debutSansD=!clean.slice(0,6).toUpperCase().includes('D');
+    if(f==='1'&&debutSansD) pts.push({l:'Musique régulière (1er récent, sans D)',p:1});
+  }
 
- // 3. Driver attitré (pas de changement de driver)
- if(driverChange===false && driver) pts.push({l:'Driver attitré (inchangé)',p:1});
+  // 3. Driver attitré (pas de changement de driver)
+  if(driverChange===false && driver) pts.push({l:'Driver attitré (inchangé)',p:1});
 
- // 4. Driver top LeTrot
- if(TOP_DRV.some(d=>driver.includes(d))) pts.push({l:`Driver top LeTrot (${p.driver})`,p:1});
+  // 4. Driver top LeTrot
+  if(TOP_DRV.some(d=>driver.includes(d))) pts.push({l:`Driver top LeTrot (${p.driver})`,p:1});
 
- // 5. Cumulard top 6 (entraîneur = driver)
- const isCum=TOP_CUM.some(c=>driver.includes(c)||entr.includes(c));
- const dEq=driver&&entr&&(driver.split(/[\s.]+/).some(w=>w.length>3&&entr.includes(w))||entr.split(/[\s.]+/).some(w=>w.length>3&&driver.includes(w)));
- if(isCum&&dEq) pts.push({l:'Cumulard top 6 (entr=driver)',p:1});
+  // 5. Cumulard top 6 (entraîneur = driver)
+  const isCum=TOP_CUM.some(c=>driver.includes(c)||entr.includes(c));
+  const dEq=driver&&entr&&(driver.split(/[\s.]+/).some(w=>w.length>3&&entr.includes(w))||entr.split(/[\s.]+/).some(w=>w.length>3&&driver.includes(w)));
+  if(isCum&&dEq) pts.push({l:'Cumulard top 6 (entr=driver)',p:1});
 
- // 6. Déferré 4 pattes (D4)
- if(deferre.includes('ANTERIEURS_POSTERIEURS')) pts.push({l:'Déferré 4 pattes (gain vitesse)',p:1});
+  // 6. Déferré 4 pattes (D4)
+  if(deferre.includes('ANTERIEURS_POSTERIEURS')) pts.push({l:'Déferré 4 pattes (gain vitesse)',p:1});
 
- // 7. Régularité (taux de places élevé)
- if(nbCourses>=5){
-   const tauxPlace=(nbVict+nbPlaces)/nbCourses;
-   if(tauxPlace>=0.5) pts.push({l:`Régulier (${Math.round(tauxPlace*100)}% places)`,p:1});
- }
+  // 7. Régularité (taux de places élevé)
+  if(nbCourses>=5){
+    const tauxPlace=(nbVict+nbPlaces)/nbCourses;
+    if(tauxPlace>=0.5) pts.push({l:`Régulier (${Math.round(tauxPlace*100)}% places)`,p:1});
+  }
 
- // 8. Cheval en forme cette saison (gains année > 0 et progression)
- if(gainsAnnee>0 && gainsAnneePrec>0){
-   if(gainsAnnee >= gainsAnneePrec*0.5) pts.push({l:'En forme cette saison',p:1});
- }
+  // 8. Cheval en forme cette saison (gains année > 0 et progression)
+  if(gainsAnnee>0 && gainsAnneePrec>0){
+    if(gainsAnnee >= gainsAnneePrec*0.5) pts.push({l:'En forme cette saison',p:1});
+  }
 
- // 9. Favori du marché
- if(favori) pts.push({l:`Favori du marché (${cote}€)`,p:1});
+  // 9. Favori du marché
+  if(favori) pts.push({l:`Favori du marché (${cote}€)`,p:1});
 
- // 10. Avis entraîneur positif
- if(avis==='POSITIF') pts.push({l:'Avis entraîneur POSITIF',p:1});
- else if(avis==='NEGATIF') pts.push({l:'Avis entraîneur négatif',p:-1});
+  // 10. Avis entraîneur positif
+  if(avis==='POSITIF') pts.push({l:'Avis entraîneur POSITIF',p:1});
+  else if(avis==='NEGATIF') pts.push({l:'Avis entraîneur négatif',p:-1});
 
- // 11. Bon chrono / réduction kilométrique (sous 1'13" = 73000)
- if(rk>0 && rk<=130000){
-   const sec=Math.floor(rk/1000);
-   const dixiemes=Math.round((rk%1000)/100);
-   if(rk<=113000) pts.push({l:`Excellent chrono (1'${String(sec-60).padStart(2,'0')}"${dixiemes})`,p:1});
- }
+  // 11. Bon chrono / réduction kilométrique (sous 1'13" = 73000)
+  if(rk>0 && rk<=130000){
+    const sec=Math.floor(rk/1000);
+    const dixiemes=Math.round((rk%1000)/100);
+    if(rk<=113000) pts.push({l:`Excellent chrono (1'${String(sec-60).padStart(2,'0')}"${dixiemes})`,p:1});
+  }
 
- // 12. Vraie Musique top 3 (José Coves)
- if(p.vmRank&&p.vmRank<=3) pts.push({l:`Vraie Musique top 3 (indice ${p.vmIndice})`,p:1});
+  // 12. Vraie Musique top 3 (José Coves)
+  if(p.vmRank&&p.vmRank<=3) pts.push({l:`Vraie Musique top 3 (indice ${p.vmIndice})`,p:1});
 
- // 13. Tangent au plafond (gains proches allocation)
- if(gains>0&&allocJ>0){const diff=(allocJ-gains)/allocJ;if(diff>=0&&diff<=0.05)pts.push({l:'Tangent au plafond',p:1});}
+  // 13. Tangent au plafond (gains proches allocation)
+  if(gains>0&&allocJ>0){const diff=(allocJ-gains)/allocJ;if(diff>=0&&diff<=0.05)pts.push({l:'Tangent au plafond',p:1});}
 
- // 14. Cheval expérimenté avec victoires
- if(nbCourses>=10 && nbVict>=3){const tauxV=nbVict/nbCourses;if(tauxV>=0.15)pts.push({l:`Bon ratio victoires (${Math.round(tauxV*100)}%)`,p:1});}
+  // 14. Cheval expérimenté avec victoires
+  if(nbCourses>=10 && nbVict>=3){const tauxV=nbVict/nbCourses;if(tauxV>=0.15)pts.push({l:`Bon ratio victoires (${Math.round(tauxV*100)}%)`,p:1});}
 
- return {pts,total:Math.max(0,pts.filter(x=>x.p>0).length-pts.filter(x=>x.p<0).length)};
+  return {pts,total:Math.max(0,pts.filter(x=>x.p>0).length-pts.filter(x=>x.p<0).length)};
 }
 
 // ══════════════════════════════════════════════════════
 //  ÉTAPE 4 — SCAN 2
 // ══════════════════════════════════════════════════════
 async function lancerScan2() {
- const selected = S.scoredCourses.filter(c=>S.checkedIds.has(c.id));
- if(!selected.length) return;
+  const selected = S.scoredCourses.filter(c=>S.checkedIds.has(c.id));
+  if(!selected.length) return;
 
- showBloc('scan2');
- document.getElementById('scan2-results').innerHTML='';
- setLog('scan2',`🌐 Récupération des partants pour ${selected.length} course(s)…`,'dim');
- S.e2Results = [];
+  showBloc('scan2');
+  document.getElementById('scan2-results').innerHTML='';
+  setLog('scan2',`🌐 Récupération des partants pour ${selected.length} course(s)…`,'dim');
+  S.e2Results = [];
 
- const dateFmt = fmtPMU(S.selDate);
- const dateFR  = fmtFR(S.selDate);
+  const dateFmt = fmtPMU(S.selDate);
+  const dateFR  = fmtFR(S.selDate);
 
- for(const course of selected){
-   setLog('scan2',`⚙️ ${course.id} — ${course.nom||course.hippodrome}…`,'dim');
-   try {
-     const res = await fetch(`${BASE}/api/partants?date=${dateFmt}&reunion=${course.reunion}&course=${course.courseNum}`);
-     if(!res.ok) throw new Error('HTTP '+res.status);
-     const json = await res.json();
-     if(json.error) throw new Error(json.error);
+  for(const course of selected){
+    setLog('scan2',`⚙️ ${course.id} — ${course.nom||course.hippodrome}…`,'dim');
+    try {
+      const res = await fetch(`${BASE}/api/partants?date=${dateFmt}&reunion=${course.reunion}&course=${course.courseNum}`);
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const json = await res.json();
+      if(json.error) throw new Error(json.error);
 
-     const participants = json.participants||json.partants||[];
-     if(!participants.length) throw new Error('Aucun partant trouvé');
+      const participants = json.participants||json.partants||[];
+      if(!participants.length) throw new Error('Aucun partant trouvé');
 
-     // Vraie Musique — calcul à partir de la chaîne musique (places des 3 dernières courses)
-     // Format musique PMU: "2a1a7a0a1a(25)..." → a=attelé, chiffre=place, D/0=disqualif
-     const parseMusique = mus => {
-       if(!mus) return [];
-       const clean = mus.replace(/\(\d+\)/g,''); // retire les années (25)
-       const matches = clean.match(/(\d+|D|A|T|R)[ammphco]/gi) || [];
-       return matches.slice(0,3).map(m => {
-         const ch = m.slice(0,-1).toUpperCase();
-         const pl = isNaN(parseInt(ch))||['D','A','T','R'].includes(ch)||parseInt(ch)>10 ? 10 : parseInt(ch);
-         return pl;
-       });
-     };
-     const vmArr=participants.map(p=>{
-       const places=parseMusique(p.musique||'');
-       const gains=parseFloat(p.gainsParticipant?.gainsCarriere||0)/100; // centimes→euros
-       // Indice = moyenne des places pondérée légèrement par les gains (plus de gains = mieux classé)
-       const moyPlace = places.length ? places.reduce((a,b)=>a+b,0)/places.length : 10;
-       return {nom:p.nom||'', ind:moyPlace, places};
-     }).sort((a,b)=>a.ind-b.ind);
-     const vmMap={};vmArr.forEach((v,i)=>{vmMap[v.nom]={rank:i+1,indice:v.ind.toFixed(1)};});
+      // Vraie Musique — calcul à partir de la chaîne musique (places des 3 dernières courses)
+      // Format musique PMU: "2a1a7a0a1a(25)..." → a=attelé, chiffre=place, D/0=disqualif
+      const parseMusique = mus => {
+        if(!mus) return [];
+        const clean = mus.replace(/\(\d+\)/g,''); // retire les années (25)
+        const matches = clean.match(/(\d+|D|A|T|R)[ammphco]/gi) || [];
+        return matches.slice(0,3).map(m => {
+          const ch = m.slice(0,-1).toUpperCase();
+          const pl = isNaN(parseInt(ch))||['D','A','T','R'].includes(ch)||parseInt(ch)>10 ? 10 : parseInt(ch);
+          return pl;
+        });
+      };
+      const vmArr=participants.map(p=>{
+        const places=parseMusique(p.musique||'');
+        const gains=parseFloat(p.gainsParticipant?.gainsCarriere||0)/100; // centimes→euros
+        // Indice = moyenne des places pondérée légèrement par les gains (plus de gains = mieux classé)
+        const moyPlace = places.length ? places.reduce((a,b)=>a+b,0)/places.length : 10;
+        return {nom:p.nom||'', ind:moyPlace, places};
+      }).sort((a,b)=>a.ind-b.ind);
+      const vmMap={};vmArr.forEach((v,i)=>{vmMap[v.nom]={rank:i+1,indice:v.ind.toFixed(1)};});
 
-     const scored=participants.map(p=>{
-       const nom=p.nom||p.nomCheval||'';
-       const vm=vmMap[nom];
-       const pvm={...p,nom,vmRank:vm?.rank,vmIndice:vm?.indice};
-       const r=scoreE2(pvm,course);
-       return {...pvm,...r};
-     }).sort((a,b)=>b.total-a.total);
+      const scored=participants.map(p=>{
+        const nom=p.nom||p.nomCheval||'';
+        const vm=vmMap[nom];
+        const pvm={...p,nom,vmRank:vm?.rank,vmIndice:vm?.indice};
+        const r=scoreE2(pvm,course);
+        return {...pvm,...r};
+      }).sort((a,b)=>b.total-a.total);
 
-     S.e2Results.push({course,scored});
+      S.e2Results.push({course,scored});
 
-     // Sauvegarde
-     dbAdd({
-       id:Date.now()+Math.random(),
-       date:dateFR,
-       course:course.nom||course.hippodrome,
-       hippodrome:course.hippodrome,
-       heure:course.heure,
-       isQuinte:course.isQuinte,
-       top3:scored.slice(0,3).map(p=>({numero:p.numero||p.numPmu,nom:p.nom,score:p.total})),
-       arrivee:null,
-       statut:'en_attente',
-     });
+      // Sauvegarde
+      dbAdd({
+        id:Date.now()+Math.random(),
+        date:dateFR,
+        course:course.nom||course.hippodrome,
+        hippodrome:course.hippodrome,
+        heure:course.heure,
+        isQuinte:course.isQuinte,
+        top3:scored.slice(0,3).map(p=>({numero:p.numero||p.numPmu,nom:p.nom,score:p.total})),
+        arrivee:null,
+        statut:'en_attente',
+      });
 
-   } catch(e) {
-     S.e2Results.push({course,error:e.message});
-   }
- }
+    } catch(e) {
+      S.e2Results.push({course,error:e.message});
+    }
+  }
 
- setLog('scan2',`✅ ${S.e2Results.filter(r=>!r.error).length} course(s) analysées`,'green');
- renderScan2Results();
+  setLog('scan2',`✅ ${S.e2Results.filter(r=>!r.error).length} course(s) analysées`,'green');
+  renderScan2Results();
 }
 
 function renderScan2Results() {
- const cols=['var(--green)','var(--gold)','var(--orange)'];
- const medals=['🥇','🥈','🥉'];
- let h='';
+  const cols=['var(--green)','var(--gold)','var(--orange)'];
+  const medals=['🥇','🥈','🥉'];
+  let h='';
 
- for(const {course,scored,error} of S.e2Results){
-   h+=`<div style="margin-bottom:24px">
-     <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px">
-       <div style="font-family:var(--serif);font-size:17px;font-weight:700;color:var(--gold)">${course.hippodrome} ${course.heure?'· '+course.heure:''}</div>
-       <div style="font-size:13px;font-weight:600;margin-top:2px">${course.nom||'—'}</div>
-       <div style="font-size:11px;color:var(--muted);margin-top:2px">${course.id} · ${course.discipline} · ${course.distance}m · ${course.partants} partants${course.isQuinte?' · ⭐ Quinté+':''}</div>
-     </div>`;
+  for(const {course,scored,error} of S.e2Results){
+    h+=`<div style="margin-bottom:24px">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px">
+        <div style="font-family:var(--serif);font-size:17px;font-weight:700;color:var(--gold)">${course.hippodrome} ${course.heure?'· '+course.heure:''}</div>
+        <div style="font-size:13px;font-weight:600;margin-top:2px">${course.nom||'—'}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${course.id} · ${course.discipline} · ${course.distance}m · ${course.partants} partants${course.isQuinte?' · ⭐ Quinté+':''}</div>
+      </div>`;
 
-   if(error){
-     h+=`<div style="background:var(--redb);border:1px solid rgba(192,56,56,.3);border-radius:9px;padding:12px;color:var(--red);font-size:13px">❌ ${error}</div>`;
-   } else {
-     // Podium
-     h+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">`;
-     scored.slice(0,3).forEach((p,i)=>{
-       const num=p.numero||p.numPmu||'?';
-       h+=`<div style="background:${cols[i]}10;border:1px solid ${cols[i]}40;border-radius:10px;padding:11px 8px;text-align:center">
-         <div style="font-size:20px;margin-bottom:4px">${medals[i]}</div>
-         <div style="width:28px;height:28px;border-radius:6px;background:${cols[i]}25;color:${cols[i]};display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:14px;margin:0 auto 5px">${num}</div>
-         <div style="font-weight:700;font-size:11px;line-height:1.2;margin-bottom:2px">${p.nom||'—'}</div>
-         <div style="font-size:10px;color:var(--muted);margin-bottom:4px">${p.driver||p.nomJockey||''}</div>
-         <div style="font-family:var(--mono);font-weight:700;font-size:16px;color:${cols[i]}">${p.total}</div>
-         <div style="font-size:9px;color:var(--muted)">pts</div>
-       </div>`;
-     });
-     h+=`</div>`;
+    if(error){
+      h+=`<div style="background:var(--redb);border:1px solid rgba(192,56,56,.3);border-radius:9px;padding:12px;color:var(--red);font-size:13px">❌ ${error}</div>`;
+    } else {
+      // Podium
+      h+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">`;
+      scored.slice(0,3).forEach((p,i)=>{
+        const num=p.numero||p.numPmu||'?';
+        h+=`<div style="background:${cols[i]}10;border:1px solid ${cols[i]}40;border-radius:10px;padding:11px 8px;text-align:center">
+          <div style="font-size:20px;margin-bottom:4px">${medals[i]}</div>
+          <div style="width:28px;height:28px;border-radius:6px;background:${cols[i]}25;color:${cols[i]};display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:14px;margin:0 auto 5px">${num}</div>
+          <div style="font-weight:700;font-size:11px;line-height:1.2;margin-bottom:2px">${p.nom||'—'}</div>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:4px">${p.driver||p.nomJockey||''}</div>
+          <div style="font-family:var(--mono);font-weight:700;font-size:16px;color:${cols[i]}">${p.total}</div>
+          <div style="font-size:9px;color:var(--muted)">pts</div>
+        </div>`;
+      });
+      h+=`</div>`;
 
-     // Tous partants
-     scored.forEach((p,i)=>{
-       const col=i<3?cols[i]:'var(--muted)';
-       const num=p.numero||p.numPmu||'?';
-       const pos=p.pts.filter(x=>x.p>0), neg=p.pts.filter(x=>x.p<0);
-       h+=`<div class="cheval-card">
-         <div class="cheval-head" onclick="this.nextElementSibling.classList.toggle('hidden')">
-           <div class="cheval-num" style="background:${col}20;color:${col}">${num}</div>
-           <div style="flex:1">
-             <div style="font-weight:700;font-size:13px">${p.nom||'—'}</div>
-             <div style="font-size:10px;color:var(--muted)">${p.driver||p.nomJockey||''}${p.entraineur?' · '+p.entraineur:''}</div>
-             <div class="pbar"><div class="pbar-fill" style="width:${Math.min(100,(p.total/8)*100)}%;background:${col}"></div></div>
-           </div>
-           <div style="font-family:var(--mono);font-weight:700;font-size:16px;color:${col};flex-shrink:0">${p.total}<span style="font-size:9px;color:var(--muted)">pts</span></div>
-           <span style="color:var(--muted);font-size:11px;margin-left:4px">▼</span>
-         </div>
-         <div class="cheval-pts hidden">
-           ${pos.map(x=>`<span class="chip" style="background:rgba(34,181,102,.12);color:var(--green);font-size:10px">✓ ${x.l}</span>`).join('')}
-           ${neg.map(x=>`<span class="chip" style="background:rgba(192,56,56,.12);color:var(--red);font-size:10px">✗ ${x.l}</span>`).join('')}
-           ${!pos.length&&!neg.length?`<span style="font-size:11px;color:var(--muted)">Données insuffisantes</span>`:''}
-         </div>
-       </div>`;
-     });
+      // Tous partants
+      scored.forEach((p,i)=>{
+        const col=i<3?cols[i]:'var(--muted)';
+        const num=p.numero||p.numPmu||'?';
+        const pos=p.pts.filter(x=>x.p>0), neg=p.pts.filter(x=>x.p<0);
+        h+=`<div class="cheval-card">
+          <div class="cheval-head" onclick="this.nextElementSibling.classList.toggle('hidden')">
+            <div class="cheval-num" style="background:${col}20;color:${col}">${num}</div>
+            <div style="flex:1">
+              <div style="font-weight:700;font-size:13px">${p.nom||'—'}</div>
+              <div style="font-size:10px;color:var(--muted)">${p.driver||p.nomJockey||''}${p.entraineur?' · '+p.entraineur:''}</div>
+              <div class="pbar"><div class="pbar-fill" style="width:${Math.min(100,(p.total/8)*100)}%;background:${col}"></div></div>
+            </div>
+            <div style="font-family:var(--mono);font-weight:700;font-size:16px;color:${col};flex-shrink:0">${p.total}<span style="font-size:9px;color:var(--muted)">pts</span></div>
+            <span style="color:var(--muted);font-size:11px;margin-left:4px">▼</span>
+          </div>
+          <div class="cheval-pts hidden">
+            ${pos.map(x=>`<span class="chip" style="background:rgba(34,181,102,.12);color:var(--green);font-size:10px">✓ ${x.l}</span>`).join('')}
+            ${neg.map(x=>`<span class="chip" style="background:rgba(192,56,56,.12);color:var(--red);font-size:10px">✗ ${x.l}</span>`).join('')}
+            ${!pos.length&&!neg.length?`<span style="font-size:11px;color:var(--muted)">Données insuffisantes</span>`:''}
+          </div>
+        </div>`;
+      });
 
-     // Recommandations jeux
-     if(scored.length>=2){
-       const [t1,t2,t3]=scored;
-       const n1=t1.numero||t1.numPmu, n2=t2.numero||t2.numPmu, n3=t3?.numero||t3?.numPmu;
-       const isQ=course.isQuinte;
-       h+=`<div style="background:var(--card);border:1px solid rgba(201,165,74,.25);border-radius:9px;padding:13px;margin-top:6px">
-         <div style="font-family:var(--serif);font-size:15px;color:var(--gold);margin-bottom:8px">Jeux recommandés CDCH</div>
-         ${[
-           ['Simple Gagnant',`#${n1} ${t1.nom}`,isQ?'LT: 32,29%':'','var(--green)'],
-           ['Simple Placé',`#${n1} ${t1.nom}`,isQ?'LT: 57,35%':'','var(--green)'],
-           ['Couplé Gagnant',`#${n1}+#${n2}`,isQ?'LT: 12,13%':'','var(--gold)'],
-           ['Couplé Placé',`#${n1}+#${n2}`,isQ?'LT: 23,70%':'','var(--gold)'],
-           t3?['2SUR4',`#${n1}+#${n2}+#${n3}`,isQ?'LT: 32,43%':'','var(--orange)']:null,
-         ].filter(Boolean).map(([l,d,s,c])=>`
-           <div style="display:flex;justify-content:space-between;align-items:center;background:var(--sf);border-radius:7px;padding:7px 10px;margin-bottom:5px">
-             <div><div style="font-weight:600;font-size:11px;color:${c}">${l}</div><div style="font-size:11px;color:var(--dim);margin-top:1px">${d}</div></div>
-             ${s?`<span style="font-size:10px;color:var(--muted)">${s}</span>`:''}
-           </div>`).join('')}
-       </div>`;
-     }
-   }
-   h+='</div>';
- }
+      // Recommandations jeux
+      if(scored.length>=2){
+        const [t1,t2,t3]=scored;
+        const n1=t1.numero||t1.numPmu, n2=t2.numero||t2.numPmu, n3=t3?.numero||t3?.numPmu;
+        const isQ=course.isQuinte;
+        h+=`<div style="background:var(--card);border:1px solid rgba(201,165,74,.25);border-radius:9px;padding:13px;margin-top:6px">
+          <div style="font-family:var(--serif);font-size:15px;color:var(--gold);margin-bottom:8px">Jeux recommandés CDCH</div>
+          ${[
+            ['Simple Gagnant',`#${n1} ${t1.nom}`,isQ?'LT: 32,29%':'','var(--green)'],
+            ['Simple Placé',`#${n1} ${t1.nom}`,isQ?'LT: 57,35%':'','var(--green)'],
+            ['Couplé Gagnant',`#${n1}+#${n2}`,isQ?'LT: 12,13%':'','var(--gold)'],
+            ['Couplé Placé',`#${n1}+#${n2}`,isQ?'LT: 23,70%':'','var(--gold)'],
+            t3?['2SUR4',`#${n1}+#${n2}+#${n3}`,isQ?'LT: 32,43%':'','var(--orange)']:null,
+          ].filter(Boolean).map(([l,d,s,c])=>`
+            <div style="display:flex;justify-content:space-between;align-items:center;background:var(--sf);border-radius:7px;padding:7px 10px;margin-bottom:5px">
+              <div><div style="font-weight:600;font-size:11px;color:${c}">${l}</div><div style="font-size:11px;color:var(--dim);margin-top:1px">${d}</div></div>
+              ${s?`<span style="font-size:10px;color:var(--muted)">${s}</span>`:''}
+            </div>`).join('')}
+        </div>`;
+      }
+    }
+    h+='</div>';
+  }
 
- document.getElementById('scan2-results').innerHTML=h;
+  document.getElementById('scan2-results').innerHTML=h;
 }
 
 // ══════════════════════════════════════════════════════
@@ -840,324 +840,324 @@ function renderScan2Results() {
 //  BACKTEST AUTOMATIQUE
 // ══════════════════════════════════════════════════════
 async function lancerBacktest() {
- const fromStr = document.getElementById('bt-from').value;
- const toStr = document.getElementById('bt-to').value;
- if(!fromStr||!toStr){toast('Choisissez les dates');return;}
+  const fromStr = document.getElementById('bt-from').value;
+  const toStr = document.getElementById('bt-to').value;
+  if(!fromStr||!toStr){toast('Choisissez les dates');return;}
 
- const from = new Date(fromStr), to = new Date(toStr);
- if(from>to){toast('Date début après date fin');return;}
+  const from = new Date(fromStr), to = new Date(toStr);
+  if(from>to){toast('Date début après date fin');return;}
 
- const nbDays = Math.round((to-from)/(1000*60*60*24))+1;
- if(nbDays>40){toast('Maximum 40 jours par backtest');return;}
+  const nbDays = Math.round((to-from)/(1000*60*60*24))+1;
+  if(nbDays>40){toast('Maximum 40 jours par backtest');return;}
 
- const btn = document.getElementById('bt-btn');
- const prog = document.getElementById('bt-progress');
- const bar = document.getElementById('bt-bar');
- const status = document.getElementById('bt-status');
- btn.disabled = true;
- prog.style.display = 'block';
+  const btn = document.getElementById('bt-btn');
+  const prog = document.getElementById('bt-progress');
+  const bar = document.getElementById('bt-bar');
+  const status = document.getElementById('bt-status');
+  btn.disabled = true;
+  prog.style.display = 'block';
 
- const db = dbGet();
- let traités=0, ajoutés=0, jour=0;
+  const db = dbGet();
+  let traités=0, ajoutés=0, jour=0;
 
- for(let d=new Date(from); d<=to; d.setDate(d.getDate()+1)){
-   jour++;
-   const dateFmt = String(d.getDate()).padStart(2,'0')+String(d.getMonth()+1).padStart(2,'0')+d.getFullYear();
-   const dateFR = String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
-   status.textContent = `Jour ${jour}/${nbDays} — ${dateFR}…`;
-   bar.style.width = Math.round((jour/nbDays)*100)+'%';
+  for(let d=new Date(from); d<=to; d.setDate(d.getDate()+1)){
+    jour++;
+    const dateFmt = String(d.getDate()).padStart(2,'0')+String(d.getMonth()+1).padStart(2,'0')+d.getFullYear();
+    const dateFR = String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
+    status.textContent = `Jour ${jour}/${nbDays} — ${dateFR}…`;
+    bar.style.width = Math.round((jour/nbDays)*100)+'%';
 
-   try {
-     const res = await fetch(`${BASE}/api/arrivees?date=${dateFmt}`);
-     if(!res.ok) continue;
-     const json = await res.json();
-     const courses = json.courses||[];
+    try {
+      const res = await fetch(`${BASE}/api/arrivees?date=${dateFmt}`);
+      if(!res.ok) continue;
+      const json = await res.json();
+      const courses = json.courses||[];
 
-     for(const c of courses){
-       traités++;
-       // Applique Expert 1
-       const e1 = scoreE1({
-         hippodrome:c.hippodrome, distance:c.distance,
-         partants:c.partants, conditions:c.conditions
-       });
-       if(e1.verdict!=='JOUABLE') continue; // on ne garde que les jouables
+      for(const c of courses){
+        traités++;
+        // Applique Expert 1
+        const e1 = scoreE1({
+          hippodrome:c.hippodrome, distance:c.distance,
+          partants:c.partants, conditions:c.conditions
+        });
+        if(e1.verdict!=='JOUABLE') continue; // on ne garde que les jouables
 
-       // Applique Expert 2 sur les partants
-       const parseMus = mus => {
-         if(!mus) return 10;
-         const clean=mus.replace(/\(\d+\)/g,'');
-         const m=clean.match(/(\d+|D|A|T|R)[ammphco]/gi)||[];
-         const places=m.slice(0,3).map(x=>{const ch=x.slice(0,-1).toUpperCase();return isNaN(parseInt(ch))||['D','A','T','R'].includes(ch)||parseInt(ch)>10?10:parseInt(ch);});
-         return places.length?places.reduce((a,b)=>a+b,0)/places.length:10;
-       };
-       const vmArr=c.participants.map(p=>({nom:p.nom,ind:parseMus(p.musique)})).sort((a,b)=>a.ind-b.ind);
-       const vmMap={};vmArr.forEach((v,i)=>{vmMap[v.nom]={rank:i+1,indice:v.ind.toFixed(1)};});
+        // Applique Expert 2 sur les partants
+        const parseMus = mus => {
+          if(!mus) return 10;
+          const clean=mus.replace(/\(\d+\)/g,'');
+          const m=clean.match(/(\d+|D|A|T|R)[ammphco]/gi)||[];
+          const places=m.slice(0,3).map(x=>{const ch=x.slice(0,-1).toUpperCase();return isNaN(parseInt(ch))||['D','A','T','R'].includes(ch)||parseInt(ch)>10?10:parseInt(ch);});
+          return places.length?places.reduce((a,b)=>a+b,0)/places.length:10;
+        };
+        const vmArr=c.participants.map(p=>({nom:p.nom,ind:parseMus(p.musique)})).sort((a,b)=>a.ind-b.ind);
+        const vmMap={};vmArr.forEach((v,i)=>{vmMap[v.nom]={rank:i+1,indice:v.ind.toFixed(1)};});
 
-       const scored=c.participants.map(p=>{
-         const vm=vmMap[p.nom];
-         const pvm={...p,vmRank:vm?.rank,vmIndice:vm?.indice};
-         const r=scoreE2(pvm,c);
-         return {...pvm,...r};
-       }).sort((a,b)=>b.total-a.total);
+        const scored=c.participants.map(p=>{
+          const vm=vmMap[p.nom];
+          const pvm={...p,vmRank:vm?.rank,vmIndice:vm?.indice};
+          const r=scoreE2(pvm,c);
+          return {...pvm,...r};
+        }).sort((a,b)=>b.total-a.total);
 
-       const top3 = scored.slice(0,3).map(p=>({numero:p.numPmu,nom:p.nom,score:p.total}));
+        const top3 = scored.slice(0,3).map(p=>({numero:p.numPmu,nom:p.nom,score:p.total}));
 
-       // Évite les doublons
-       const exists = db.analyses.find(a=>a.date===dateFR && a.courseId===c.id);
-       if(exists) continue;
+        // Évite les doublons
+        const exists = db.analyses.find(a=>a.date===dateFR && a.courseId===c.id);
+        if(exists) continue;
 
-       db.analyses.unshift({
-         id:Date.now()+Math.random(),
-         date:dateFR,
-         courseId:c.id,
-         course:c.nom||c.hippodrome,
-         hippodrome:c.hippodrome,
-         isQuinte:c.isQuinte,
-         top3,
-         arrivee:c.arrivee.join('-'),
-         statut:'complete',
-         backtest:true,
-       });
-       ajoutés++;
-     }
-   } catch(e) { /* skip */ }
- }
+        db.analyses.unshift({
+          id:Date.now()+Math.random(),
+          date:dateFR,
+          courseId:c.id,
+          course:c.nom||c.hippodrome,
+          hippodrome:c.hippodrome,
+          isQuinte:c.isQuinte,
+          top3,
+          arrivee:c.arrivee.join('-'),
+          statut:'complete',
+          backtest:true,
+        });
+        ajoutés++;
+      }
+    } catch(e) { /* skip */ }
+  }
 
- if(db.analyses.length>2000) db.analyses=db.analyses.slice(0,2000);
- dbSet(db);
+  if(db.analyses.length>2000) db.analyses=db.analyses.slice(0,2000);
+  dbSet(db);
 
- status.textContent = `✅ Terminé — ${ajoutés} courses jouables ajoutées (${traités} analysées)`;
- bar.style.width='100%';
- btn.disabled=false;
- toast(`✅ ${ajoutés} courses ajoutées au bilan`);
- setTimeout(()=>renderBilan(), 1500);
+  status.textContent = `✅ Terminé — ${ajoutés} courses jouables ajoutées (${traités} analysées)`;
+  bar.style.width='100%';
+  btn.disabled=false;
+  toast(`✅ ${ajoutés} courses ajoutées au bilan`);
+  setTimeout(()=>renderBilan(), 1500);
 }
 
 function renderBilan() {
- const db = dbGet();
- const all = db.analyses||[];
- const done = all.filter(a=>a.statut==='complete');
- const wait = all.filter(a=>a.statut==='en_attente');
- const el = document.getElementById('bilan-content');
+  const db = dbGet();
+  const all = db.analyses||[];
+  const done = all.filter(a=>a.statut==='complete');
+  const wait = all.filter(a=>a.statut==='en_attente');
+  const el = document.getElementById('bilan-content');
 
- // Calculer stats
- const stats = {
-   // Simple Gagnant par cheval
-   sg1:0, sg2:0, sg3:0,
-   // Simple Placé par cheval
-   sp1:0, sp2:0, sp3:0,
-   // Couplé Placé par combinaison
-   cp12:0, cp13:0, cp23:0,
-   // 2SUR4 par combinaison
-   s4_12:0, s4_13:0, s4_23:0,
-   total:done.length
- };
- const ecartsG=[];
+  // Calculer stats
+  const stats = {
+    // Simple Gagnant par cheval
+    sg1:0, sg2:0, sg3:0,
+    // Simple Placé par cheval
+    sp1:0, sp2:0, sp3:0,
+    // Couplé Placé par combinaison
+    cp12:0, cp13:0, cp23:0,
+    // 2SUR4 par combinaison
+    s4_12:0, s4_13:0, s4_23:0,
+    total:done.length
+  };
+  const ecartsG=[];
 
- done.forEach(a=>{
-   const arr=(a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
-   const top=(a.top3||[]).map(p=>p.numero);
-   if(!arr.length||top.length<1) return;
-   const c1=top[0], c2=top[1], c3=top[2];
-   const arr3=arr.slice(0,3), arr4=arr.slice(0,4);
+  done.forEach(a=>{
+    const arr=(a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
+    const top=(a.top3||[]).map(p=>p.numero);
+    if(!arr.length||top.length<1) return;
+    const c1=top[0], c2=top[1], c3=top[2];
+    const arr3=arr.slice(0,3), arr4=arr.slice(0,4);
 
-   // Simple Gagnant (cheval arrive 1er)
-   if(c1===arr[0]) stats.sg1++;
-   if(c2&&c2===arr[0]) stats.sg2++;
-   if(c3&&c3===arr[0]) stats.sg3++;
+    // Simple Gagnant (cheval arrive 1er)
+    if(c1===arr[0]) stats.sg1++;
+    if(c2&&c2===arr[0]) stats.sg2++;
+    if(c3&&c3===arr[0]) stats.sg3++;
 
-   // Simple Placé (cheval dans top 3)
-   if(c1&&arr3.includes(c1)) stats.sp1++;
-   if(c2&&arr3.includes(c2)) stats.sp2++;
-   if(c3&&arr3.includes(c3)) stats.sp3++;
+    // Simple Placé (cheval dans top 3)
+    if(c1&&arr3.includes(c1)) stats.sp1++;
+    if(c2&&arr3.includes(c2)) stats.sp2++;
+    if(c3&&arr3.includes(c3)) stats.sp3++;
 
-   // Couplé Placé (2 chevaux dans top 3)
-   if(c1&&c2&&arr3.includes(c1)&&arr3.includes(c2)) stats.cp12++;
-   if(c1&&c3&&arr3.includes(c1)&&arr3.includes(c3)) stats.cp13++;
-   if(c2&&c3&&arr3.includes(c2)&&arr3.includes(c3)) stats.cp23++;
+    // Couplé Placé (2 chevaux dans top 3)
+    if(c1&&c2&&arr3.includes(c1)&&arr3.includes(c2)) stats.cp12++;
+    if(c1&&c3&&arr3.includes(c1)&&arr3.includes(c3)) stats.cp13++;
+    if(c2&&c3&&arr3.includes(c2)&&arr3.includes(c3)) stats.cp23++;
 
-   // 2SUR4 (2 chevaux dans top 4)
-   if(c1&&c2&&arr4.includes(c1)&&arr4.includes(c2)) stats.s4_12++;
-   if(c1&&c3&&arr4.includes(c1)&&arr4.includes(c3)) stats.s4_13++;
-   if(c2&&c3&&arr4.includes(c2)&&arr4.includes(c3)) stats.s4_23++;
+    // 2SUR4 (2 chevaux dans top 4)
+    if(c1&&c2&&arr4.includes(c1)&&arr4.includes(c2)) stats.s4_12++;
+    if(c1&&c3&&arr4.includes(c1)&&arr4.includes(c3)) stats.s4_13++;
+    if(c2&&c3&&arr4.includes(c2)&&arr4.includes(c3)) stats.s4_23++;
 
-   // Écart du cheval n°1
-   const pos=arr.indexOf(c1)+1;
-   if(pos>0) ecartsG.push(pos);
- });
+    // Écart du cheval n°1
+    const pos=arr.indexOf(c1)+1;
+    if(pos>0) ecartsG.push(pos);
+  });
 
- const pct=(n,t)=>t>0?Math.round((n/t)*100):0;
- const col=v=>v>=50?'var(--green)':v>=30?'var(--gold)':v>=15?'var(--orange)':'var(--red)';
- const ecartStats=arr=>arr.length?{min:Math.min(...arr),max:Math.max(...arr),moy:parseFloat((arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1))}:{min:'-',max:'-',moy:'-'};
- const esG=ecartStats(ecartsG);
+  const pct=(n,t)=>t>0?Math.round((n/t)*100):0;
+  const col=v=>v>=50?'var(--green)':v>=30?'var(--gold)':v>=15?'var(--orange)':'var(--red)';
+  const ecartStats=arr=>arr.length?{min:Math.min(...arr),max:Math.max(...arr),moy:parseFloat((arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1))}:{min:'-',max:'-',moy:'-'};
+  const esG=ecartStats(ecartsG);
 
- let h='';
+  let h='';
 
- // ── BLOC BACKTEST (toujours visible en haut) ──
- h += `<div class="card" style="border-color:rgba(58,143,212,.3)">
-   <div style="font-weight:600;color:var(--blue);font-size:13px;margin-bottom:8px">🔄 Backtest automatique</div>
-   <div style="font-size:12px;color:var(--dim);margin-bottom:10px;line-height:1.5">
-     Récupère automatiquement les arrivées réelles et applique la stratégie CDCH sur une période passée.
-   </div>
-   <div style="display:flex;gap:8px;margin-bottom:8px">
-     <div style="flex:1">
-       <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Du</div>
-       <input class="inp" type="date" id="bt-from" value="2026-01-01" style="font-size:13px"/>
-     </div>
-     <div style="flex:1">
-       <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Au</div>
-       <input class="inp" type="date" id="bt-to" value="2026-01-07" style="font-size:13px"/>
-     </div>
-   </div>
-   <button class="btn btn-blue" id="bt-btn" onclick="lancerBacktest()" style="margin-bottom:0">
-     🔄 Lancer le backtest
-   </button>
-   <div id="bt-progress" style="display:none;margin-top:10px">
-     <div style="font-size:11px;color:var(--dim);margin-bottom:5px" id="bt-status">—</div>
-     <div class="pbar" style="height:8px"><div class="pbar-fill" id="bt-bar" style="width:0%;background:var(--blue)"></div></div>
-   </div>
-   <div style="font-size:10px;color:var(--muted);margin-top:8px;font-style:italic">⚠️ Conseil : traitez par semaine pour éviter la surcharge (≈30s par semaine)</div>
- </div>`;
+  // ── BLOC BACKTEST (toujours visible en haut) ──
+  h += `<div class="card" style="border-color:rgba(58,143,212,.3)">
+    <div style="font-weight:600;color:var(--blue);font-size:13px;margin-bottom:8px">🔄 Backtest automatique</div>
+    <div style="font-size:12px;color:var(--dim);margin-bottom:10px;line-height:1.5">
+      Récupère automatiquement les arrivées réelles et applique la stratégie CDCH sur une période passée.
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <div style="flex:1">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Du</div>
+        <input class="inp" type="date" id="bt-from" value="2026-01-01" style="font-size:13px"/>
+      </div>
+      <div style="flex:1">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Au</div>
+        <input class="inp" type="date" id="bt-to" value="2026-01-07" style="font-size:13px"/>
+      </div>
+    </div>
+    <button class="btn btn-blue" id="bt-btn" onclick="lancerBacktest()" style="margin-bottom:0">
+      🔄 Lancer le backtest
+    </button>
+    <div id="bt-progress" style="display:none;margin-top:10px">
+      <div style="font-size:11px;color:var(--dim);margin-bottom:5px" id="bt-status">—</div>
+      <div class="pbar" style="height:8px"><div class="pbar-fill" id="bt-bar" style="width:0%;background:var(--blue)"></div></div>
+    </div>
+    <div style="font-size:10px;color:var(--muted);margin-top:8px;font-style:italic">⚠️ Conseil : traitez par semaine pour éviter la surcharge (≈30s par semaine)</div>
+  </div>`;
 
- if(!done.length && !wait.length){
-   h+='<div style="text-align:center;padding:40px 0;color:var(--muted);font-size:13px">Aucune analyse encore.<br/>Lancez un scan dans l\'onglet 🎯 ou un backtest ci-dessus</div>';
-   el.innerHTML=h; return;
- }
+  if(!done.length && !wait.length){
+    h+='<div style="text-align:center;padding:40px 0;color:var(--muted);font-size:13px">Aucune analyse encore.<br/>Lancez un scan dans l\'onglet 🎯 ou un backtest ci-dessus</div>';
+    el.innerHTML=h; return;
+  }
 
- // Helper ligne de stat avec 3 colonnes
- const row3 = (titre, vals, refs) => {
-   return `<div class="card" style="padding:12px 14px">
-     <div style="font-weight:600;font-size:13px;margin-bottom:10px">${titre}</div>
-     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-       ${vals.map((v,i)=>{
-         const p=pct(v.n,stats.total);
-         return `<div style="text-align:center">
-           <div style="font-size:10px;color:var(--muted);margin-bottom:3px">${v.label}</div>
-           <div style="font-family:var(--mono);font-size:20px;font-weight:700;color:${col(p)}">${p}%</div>
-           <div style="font-size:9px;color:var(--muted)">${v.n}/${stats.total}</div>
-           <div style="font-size:9px;color:var(--muted)">LT ${refs[i]}</div>
-           <div class="pbar" style="margin-top:4px"><div class="pbar-fill" style="width:${p}%;background:${col(p)}"></div></div>
-         </div>`;
-       }).join('')}
-     </div>
-   </div>`;
- };
+  // Helper ligne de stat avec 3 colonnes
+  const row3 = (titre, vals, refs) => {
+    return `<div class="card" style="padding:12px 14px">
+      <div style="font-weight:600;font-size:13px;margin-bottom:10px">${titre}</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+        ${vals.map((v,i)=>{
+          const p=pct(v.n,stats.total);
+          return `<div style="text-align:center">
+            <div style="font-size:10px;color:var(--muted);margin-bottom:3px">${v.label}</div>
+            <div style="font-family:var(--mono);font-size:20px;font-weight:700;color:${col(p)}">${p}%</div>
+            <div style="font-size:9px;color:var(--muted)">${v.n}/${stats.total}</div>
+            <div style="font-size:9px;color:var(--muted)">LT ${refs[i]}</div>
+            <div class="pbar" style="margin-top:4px"><div class="pbar-fill" style="width:${p}%;background:${col(p)}"></div></div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  };
 
- h+=`<div class="stitle">Statistiques (${done.length} course${done.length>1?'s':''})</div>`;
+  h+=`<div class="stitle">Statistiques (${done.length} course${done.length>1?'s':''})</div>`;
 
- // Simple Gagnant par cheval
- h+=row3('🥇 Simple Gagnant',
-   [{label:'Cheval 1',n:stats.sg1},{label:'Cheval 2',n:stats.sg2},{label:'Cheval 3',n:stats.sg3}],
-   ['32%','15%','12%']);
+  // Simple Gagnant par cheval
+  h+=row3('🥇 Simple Gagnant',
+    [{label:'Cheval 1',n:stats.sg1},{label:'Cheval 2',n:stats.sg2},{label:'Cheval 3',n:stats.sg3}],
+    ['32%','15%','12%']);
 
- // Simple Placé par cheval
- h+=row3('🎯 Simple Placé',
-   [{label:'Cheval 1',n:stats.sp1},{label:'Cheval 2',n:stats.sp2},{label:'Cheval 3',n:stats.sp3}],
-   ['57%','45%','35%']);
+  // Simple Placé par cheval
+  h+=row3('🎯 Simple Placé',
+    [{label:'Cheval 1',n:stats.sp1},{label:'Cheval 2',n:stats.sp2},{label:'Cheval 3',n:stats.sp3}],
+    ['57%','45%','35%']);
 
- // Couplé Placé par combinaison
- h+=row3('🔗 Couplé Placé',
-   [{label:'1+2',n:stats.cp12},{label:'1+3',n:stats.cp13},{label:'2+3',n:stats.cp23}],
-   ['24%','17%','15%']);
+  // Couplé Placé par combinaison
+  h+=row3('🔗 Couplé Placé',
+    [{label:'1+2',n:stats.cp12},{label:'1+3',n:stats.cp13},{label:'2+3',n:stats.cp23}],
+    ['24%','17%','15%']);
 
- // 2SUR4 par combinaison
- h+=row3('🎲 2SUR4',
-   [{label:'1+2',n:stats.s4_12},{label:'1+3',n:stats.s4_13},{label:'2+3',n:stats.s4_23}],
-   ['32%','27%','24%']);
+  // 2SUR4 par combinaison
+  h+=row3('🎲 2SUR4',
+    [{label:'1+2',n:stats.s4_12},{label:'1+3',n:stats.s4_13},{label:'2+3',n:stats.s4_23}],
+    ['32%','27%','24%']);
 
- // Écarts (cheval n°1)
- if(ecartsG.length){
-   const esG={min:Math.min(...ecartsG),max:Math.max(...ecartsG),moy:(ecartsG.reduce((a,b)=>a+b,0)/ecartsG.length).toFixed(1)};
-   h+=`<div class="stitle">Écarts — position réelle du cheval n°1</div>
-   <div class="card" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center">
-     <div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--green)">${esG.min}</div><div style="font-size:11px;color:var(--muted)">Écart min</div></div>
-     <div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--gold)">${esG.moy}</div><div style="font-size:11px;color:var(--muted)">Écart moyen</div></div>
-     <div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--orange)">${esG.max}</div><div style="font-size:11px;color:var(--muted)">Écart max</div></div>
-   </div>`;
- }
+  // Écarts (cheval n°1)
+  if(ecartsG.length){
+    const esG={min:Math.min(...ecartsG),max:Math.max(...ecartsG),moy:(ecartsG.reduce((a,b)=>a+b,0)/ecartsG.length).toFixed(1)};
+    h+=`<div class="stitle">Écarts — position réelle du cheval n°1</div>
+    <div class="card" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center">
+      <div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--green)">${esG.min}</div><div style="font-size:11px;color:var(--muted)">Écart min</div></div>
+      <div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--gold)">${esG.moy}</div><div style="font-size:11px;color:var(--muted)">Écart moyen</div></div>
+      <div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--orange)">${esG.max}</div><div style="font-size:11px;color:var(--muted)">Écart max</div></div>
+    </div>`;
+  }
 
- // En attente de résultats
- if(wait.length){
-   h+=`<div class="stitle">${wait.length} résultat(s) à saisir</div>`;
-   wait.slice(0,10).forEach(a=>{
-     const top3=(a.top3||[]).map(p=>`<span class="chip" style="background:var(--sf);color:var(--dim);font-size:10px">#${p.numero} ${p.nom}</span>`).join(' ');
-     h+=`<div class="rcard">
-       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:8px">
-         <div>
-           <div style="font-weight:600;font-size:13px">${a.course}</div>
-           <div style="font-size:11px;color:var(--muted)">${a.date} · ${a.hippodrome||''} · ${a.heure||''}</div>
-         </div>
-         ${a.isQuinte?`<span class="chip" style="background:rgba(201,165,74,.15);color:var(--gold)">Q+</span>`:''}
-       </div>
-       <div style="font-size:11px;color:var(--muted);margin-bottom:5px">Notre sélection</div>
-       <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">${top3}</div>
-       <div style="font-size:11px;color:var(--muted);margin-bottom:5px">Saisir l'arrivée réelle (ex: 7-2-9)</div>
-       <div style="display:flex;gap:8px">
-         <input class="inp" placeholder="7-2-9" id="arr-${a.id}" style="flex:1;font-size:13px"/>
-         <button class="btn btn-gold btn-sm" onclick="valArr('${a.id}')">OK</button>
-       </div>
-     </div>`;
-   });
- }
+  // En attente de résultats
+  if(wait.length){
+    h+=`<div class="stitle">${wait.length} résultat(s) à saisir</div>`;
+    wait.slice(0,10).forEach(a=>{
+      const top3=(a.top3||[]).map(p=>`<span class="chip" style="background:var(--sf);color:var(--dim);font-size:10px">#${p.numero} ${p.nom}</span>`).join(' ');
+      h+=`<div class="rcard">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:8px">
+          <div>
+            <div style="font-weight:600;font-size:13px">${a.course}</div>
+            <div style="font-size:11px;color:var(--muted)">${a.date} · ${a.hippodrome||''} · ${a.heure||''}</div>
+          </div>
+          ${a.isQuinte?`<span class="chip" style="background:rgba(201,165,74,.15);color:var(--gold)">Q+</span>`:''}
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:5px">Notre sélection</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">${top3}</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:5px">Saisir l'arrivée réelle (ex: 7-2-9)</div>
+        <div style="display:flex;gap:8px">
+          <input class="inp" placeholder="7-2-9" id="arr-${a.id}" style="flex:1;font-size:13px"/>
+          <button class="btn btn-gold btn-sm" onclick="valArr('${a.id}')">OK</button>
+        </div>
+      </div>`;
+    });
+  }
 
- // Historique complet
- if(done.length){
-   h+=`<div class="stitle">Historique des résultats</div>`;
-   done.slice(0,20).forEach(a=>{
-     const arr=(a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
-     const top=(a.top3||[]).map(p=>p.numero);
-     const sg=top[0]===arr[0], sp=arr.slice(0,3).includes(top[0]);
-     const cp=top.length>=2&&arr.slice(0,3).includes(top[0])&&arr.slice(0,3).includes(top[1]);
-     const s4=top.filter(n=>arr.slice(0,4).includes(n)).length>=2;
-     const badges=[];
-     if(sg) badges.push({l:'SG✅',c:'var(--green)',b:'var(--greenb)'});
-     else   badges.push({l:'SG❌',c:'var(--muted)',b:'var(--sf)'});
-     if(sp) badges.push({l:'SP✅',c:'var(--green)',b:'var(--greenb)'});
-     if(cp) badges.push({l:'CP✅',c:'var(--gold)',b:'rgba(201,165,74,.12)'});
-     if(s4) badges.push({l:'2S4✅',c:'var(--blue)',b:'var(--blueb)'});
+  // Historique complet
+  if(done.length){
+    h+=`<div class="stitle">Historique des résultats</div>`;
+    done.slice(0,20).forEach(a=>{
+      const arr=(a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
+      const top=(a.top3||[]).map(p=>p.numero);
+      const sg=top[0]===arr[0], sp=arr.slice(0,3).includes(top[0]);
+      const cp=top.length>=2&&arr.slice(0,3).includes(top[0])&&arr.slice(0,3).includes(top[1]);
+      const s4=top.filter(n=>arr.slice(0,4).includes(n)).length>=2;
+      const badges=[];
+      if(sg) badges.push({l:'SG✅',c:'var(--green)',b:'var(--greenb)'});
+      else   badges.push({l:'SG❌',c:'var(--muted)',b:'var(--sf)'});
+      if(sp) badges.push({l:'SP✅',c:'var(--green)',b:'var(--greenb)'});
+      if(cp) badges.push({l:'CP✅',c:'var(--gold)',b:'rgba(201,165,74,.12)'});
+      if(s4) badges.push({l:'2S4✅',c:'var(--blue)',b:'var(--blueb)'});
 
-     h+=`<div class="rcard">
-       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
-         <div>
-           <div style="font-weight:600;font-size:13px">${a.course}</div>
-           <div style="font-size:11px;color:var(--muted)">${a.date}</div>
-         </div>
-         <div style="font-family:var(--mono);color:var(--muted);font-size:11px">→ ${a.arrivee}</div>
-       </div>
-       <div style="display:flex;gap:4px;flex-wrap:wrap">
-         ${badges.map(b=>`<span class="chip" style="background:${b.b};color:${b.c}">${b.l}</span>`).join('')}
-       </div>
-     </div>`;
-   });
- }
+      h+=`<div class="rcard">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+          <div>
+            <div style="font-weight:600;font-size:13px">${a.course}</div>
+            <div style="font-size:11px;color:var(--muted)">${a.date}</div>
+          </div>
+          <div style="font-family:var(--mono);color:var(--muted);font-size:11px">→ ${a.arrivee}</div>
+        </div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          ${badges.map(b=>`<span class="chip" style="background:${b.b};color:${b.c}">${b.l}</span>`).join('')}
+        </div>
+      </div>`;
+    });
+  }
 
- h+=`<button class="btn btn-ghost" style="margin-top:8px" onclick="if(confirm('Effacer tout?')){localStorage.removeItem('${DB}');renderBilan();toast('Effacé')}">Effacer l'historique</button>`;
- el.innerHTML=h;
+  h+=`<button class="btn btn-ghost" style="margin-top:8px" onclick="if(confirm('Effacer tout?')){localStorage.removeItem('${DB}');renderBilan();toast('Effacé')}">Effacer l'historique</button>`;
+  el.innerHTML=h;
 }
 
 function valArr(id) {
- const inp=document.getElementById('arr-'+id);
- if(!inp||!inp.value.trim()){toast('Entrez l\'arrivée');return;}
- const nums=inp.value.split(/[-\s,]+/).map(n=>parseInt(n)).filter(n=>!isNaN(n));
- if(!nums.length){toast('Format: 7-2-9');return;}
- dbUpd(id,{arrivee:nums.join('-'),statut:'complete'});
- toast('✅ Résultat enregistré !');
- renderBilan();
+  const inp=document.getElementById('arr-'+id);
+  if(!inp||!inp.value.trim()){toast('Entrez l\'arrivée');return;}
+  const nums=inp.value.split(/[-\s,]+/).map(n=>parseInt(n)).filter(n=>!isNaN(n));
+  if(!nums.length){toast('Format: 7-2-9');return;}
+  dbUpd(id,{arrivee:nums.join('-'),statut:'complete'});
+  toast('✅ Résultat enregistré !');
+  renderBilan();
 }
 
 // ══════════════════════════════════════════════════════
 //  HELPERS
 // ══════════════════════════════════════════════════════
 function setLog(id,msg,type='dim'){
- const el=document.getElementById(id+'-log');
- if(!el) return;
- el.style.color=type==='green'?'var(--green)':type==='red'?'var(--red)':'var(--dim)';
- el.innerHTML=type==='dim'?`<span class="spin" style="font-size:10px;margin-right:6px">◌</span>${msg}`:msg;
+  const el=document.getElementById(id+'-log');
+  if(!el) return;
+  el.style.color=type==='green'?'var(--green)':type==='red'?'var(--red)':'var(--dim)';
+  el.innerHTML=type==='dim'?`<span class="spin" style="font-size:10px;margin-right:6px">◌</span>${msg}`:msg;
 }
 function toast(msg){
- const t=document.getElementById('toast');
- t.textContent=msg;t.classList.add('on');
- setTimeout(()=>t.classList.remove('on'),2500);
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('on');
+  setTimeout(()=>t.classList.remove('on'),2500);
 }
 
 // ── INIT ─────────────────────────────────────────────
