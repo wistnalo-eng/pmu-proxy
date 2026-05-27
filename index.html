@@ -941,21 +941,49 @@ function renderBilan() {
  const el = document.getElementById('bilan-content');
 
  // Calculer stats
- const stats = {sg:0,sp:0,cg:0,cp:0,s4:0,total:done.length};
- const ecartsG=[],ecartsP=[],ecartsCG=[],ecartsCP=[];
+ const stats = {
+   // Simple Gagnant par cheval
+   sg1:0, sg2:0, sg3:0,
+   // Simple Placé par cheval
+   sp1:0, sp2:0, sp3:0,
+   // Couplé Placé par combinaison
+   cp12:0, cp13:0, cp23:0,
+   // 2SUR4 par combinaison
+   s4_12:0, s4_13:0, s4_23:0,
+   total:done.length
+ };
+ const ecartsG=[];
 
  done.forEach(a=>{
    const arr=(a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
    const top=(a.top3||[]).map(p=>p.numero);
-   if(!arr.length||!top.length) return;
-   if(top[0]===arr[0]) stats.sg++;
-   if(arr.slice(0,3).includes(top[0])) stats.sp++;
-   if(top.length>=2&&arr[0]===top[0]&&arr[1]===top[1]) stats.cg++;
-   if(top.length>=2&&arr.slice(0,3).includes(top[0])&&arr.slice(0,3).includes(top[1])) stats.cp++;
-   if(top.filter(n=>arr.slice(0,4).includes(n)).length>=2) stats.s4++;
-   // Calcul écarts (position du cheval sélectionné dans l'arrivée)
-   const pos=arr.indexOf(top[0])+1;
-   if(pos>0){ecartsG.push(pos);ecartsP.push(pos);}
+   if(!arr.length||top.length<1) return;
+   const c1=top[0], c2=top[1], c3=top[2];
+   const arr3=arr.slice(0,3), arr4=arr.slice(0,4);
+
+   // Simple Gagnant (cheval arrive 1er)
+   if(c1===arr[0]) stats.sg1++;
+   if(c2&&c2===arr[0]) stats.sg2++;
+   if(c3&&c3===arr[0]) stats.sg3++;
+
+   // Simple Placé (cheval dans top 3)
+   if(c1&&arr3.includes(c1)) stats.sp1++;
+   if(c2&&arr3.includes(c2)) stats.sp2++;
+   if(c3&&arr3.includes(c3)) stats.sp3++;
+
+   // Couplé Placé (2 chevaux dans top 3)
+   if(c1&&c2&&arr3.includes(c1)&&arr3.includes(c2)) stats.cp12++;
+   if(c1&&c3&&arr3.includes(c1)&&arr3.includes(c3)) stats.cp13++;
+   if(c2&&c3&&arr3.includes(c2)&&arr3.includes(c3)) stats.cp23++;
+
+   // 2SUR4 (2 chevaux dans top 4)
+   if(c1&&c2&&arr4.includes(c1)&&arr4.includes(c2)) stats.s4_12++;
+   if(c1&&c3&&arr4.includes(c1)&&arr4.includes(c3)) stats.s4_13++;
+   if(c2&&c3&&arr4.includes(c2)&&arr4.includes(c3)) stats.s4_23++;
+
+   // Écart du cheval n°1
+   const pos=arr.indexOf(c1)+1;
+   if(pos>0) ecartsG.push(pos);
  });
 
  const pct=(n,t)=>t>0?Math.round((n/t)*100):0;
@@ -996,38 +1024,51 @@ function renderBilan() {
    el.innerHTML=h; return;
  }
 
- // Stats globales
- h+=`<div class="stitle">Statistiques (${done.length} course${done.length>1?'s':''} analysée${done.length>1?'s':''})</div>
- <div class="stat2">
-   <div class="sbox">
-     <div class="sval" style="color:${col(pct(stats.sg,stats.total))}">${pct(stats.sg,stats.total)}%</div>
-     <div class="slbl">Simple Gagnant</div>
-     <div class="ssub">${stats.sg}/${stats.total} · LT: 32%</div>
-     <div class="pbar"><div class="pbar-fill" style="width:${pct(stats.sg,stats.total)}%;background:${col(pct(stats.sg,stats.total))}"></div></div>
-   </div>
-   <div class="sbox">
-     <div class="sval" style="color:${col(pct(stats.sp,stats.total))}">${pct(stats.sp,stats.total)}%</div>
-     <div class="slbl">Simple Placé</div>
-     <div class="ssub">${stats.sp}/${stats.total} · LT: 57%</div>
-     <div class="pbar"><div class="pbar-fill" style="width:${pct(stats.sp,stats.total)}%;background:${col(pct(stats.sp,stats.total))}"></div></div>
-   </div>
-   <div class="sbox">
-     <div class="sval" style="color:${col(pct(stats.cp,stats.total))}">${pct(stats.cp,stats.total)}%</div>
-     <div class="slbl">Couplé Placé</div>
-     <div class="ssub">${stats.cp}/${stats.total} · LT: 24%</div>
-     <div class="pbar"><div class="pbar-fill" style="width:${pct(stats.cp,stats.total)}%;background:${col(pct(stats.cp,stats.total))}"></div></div>
-   </div>
-   <div class="sbox">
-     <div class="sval" style="color:${col(pct(stats.s4,stats.total))}">${pct(stats.s4,stats.total)}%</div>
-     <div class="slbl">2SUR4</div>
-     <div class="ssub">${stats.s4}/${stats.total} · LT: 32%</div>
-     <div class="pbar"><div class="pbar-fill" style="width:${pct(stats.s4,stats.total)}%;background:${col(pct(stats.s4,stats.total))}"></div></div>
-   </div>
- </div>`;
+ // Helper ligne de stat avec 3 colonnes
+ const row3 = (titre, vals, refs) => {
+   return `<div class="card" style="padding:12px 14px">
+     <div style="font-weight:600;font-size:13px;margin-bottom:10px">${titre}</div>
+     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+       ${vals.map((v,i)=>{
+         const p=pct(v.n,stats.total);
+         return `<div style="text-align:center">
+           <div style="font-size:10px;color:var(--muted);margin-bottom:3px">${v.label}</div>
+           <div style="font-family:var(--mono);font-size:20px;font-weight:700;color:${col(p)}">${p}%</div>
+           <div style="font-size:9px;color:var(--muted)">${v.n}/${stats.total}</div>
+           <div style="font-size:9px;color:var(--muted)">LT ${refs[i]}</div>
+           <div class="pbar" style="margin-top:4px"><div class="pbar-fill" style="width:${p}%;background:${col(p)}"></div></div>
+         </div>`;
+       }).join('')}
+     </div>
+   </div>`;
+ };
 
- // Écarts
- if(done.length){
-   h+=`<div class="stitle">Écarts (position réelle du cheval sélectionné)</div>
+ h+=`<div class="stitle">Statistiques (${done.length} course${done.length>1?'s':''})</div>`;
+
+ // Simple Gagnant par cheval
+ h+=row3('🥇 Simple Gagnant',
+   [{label:'Cheval 1',n:stats.sg1},{label:'Cheval 2',n:stats.sg2},{label:'Cheval 3',n:stats.sg3}],
+   ['32%','15%','12%']);
+
+ // Simple Placé par cheval
+ h+=row3('🎯 Simple Placé',
+   [{label:'Cheval 1',n:stats.sp1},{label:'Cheval 2',n:stats.sp2},{label:'Cheval 3',n:stats.sp3}],
+   ['57%','45%','35%']);
+
+ // Couplé Placé par combinaison
+ h+=row3('🔗 Couplé Placé',
+   [{label:'1+2',n:stats.cp12},{label:'1+3',n:stats.cp13},{label:'2+3',n:stats.cp23}],
+   ['24%','17%','15%']);
+
+ // 2SUR4 par combinaison
+ h+=row3('🎲 2SUR4',
+   [{label:'1+2',n:stats.s4_12},{label:'1+3',n:stats.s4_13},{label:'2+3',n:stats.s4_23}],
+   ['32%','27%','24%']);
+
+ // Écarts (cheval n°1)
+ if(ecartsG.length){
+   const esG={min:Math.min(...ecartsG),max:Math.max(...ecartsG),moy:(ecartsG.reduce((a,b)=>a+b,0)/ecartsG.length).toFixed(1)};
+   h+=`<div class="stitle">Écarts — position réelle du cheval n°1</div>
    <div class="card" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center">
      <div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--green)">${esG.min}</div><div style="font-size:11px;color:var(--muted)">Écart min</div></div>
      <div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--gold)">${esG.moy}</div><div style="font-size:11px;color:var(--muted)">Écart moyen</div></div>
