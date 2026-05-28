@@ -419,7 +419,7 @@ async function validerDate() {
           nom:c.libelle||c.libelleCourt||'',
           discipline:'Attelé',
           distance:c.distance, partants:part,
-          allocation:c.montantAlloue||null,
+          allocation:c.montantPrix||c.montantTotalOffert||c.montantAlloue||c.montant||null,
           conditions:cond, heure, isQuinte:isQ,
         });
       }
@@ -673,15 +673,11 @@ function scoreE2(p, course) {
   // 15. Cheval déclassé (allocation précédente > allocation du jour de ≥10%)
   let allocPrec=parseFloat(p.allocPrec)||0;
   let allocJour=allocJ;
-  // DEBUG temporaire : affiche les valeurs d'allocation
-  if(allocPrec>0 || allocJour>0){
-    pts.push({l:`🔍debug: jour=${allocJour} préc=${allocPrec}`,p:0});
-  }
   // Normalisation : si l'un est en centimes (×100), on aligne les unités
   if(allocJour>0 && allocPrec>0){
     const ratio = allocJour/allocPrec;
-    if(ratio>50) allocJour = allocJour/100;   // allocJour était en centimes
-    else if(ratio<0.02) allocPrec = allocPrec/100; // allocPrec en centimes
+    if(ratio>50) allocJour = allocJour/100;
+    else if(ratio<0.02) allocPrec = allocPrec/100;
   }
   if(allocPrec>0 && allocJour>0){
     const diffPct=((allocPrec-allocJour)/allocPrec)*100;
