@@ -670,6 +670,22 @@ function scoreE2(p, course) {
   // 14. Cheval expérimenté avec victoires
   if(nbCourses>=10 && nbVict>=3){const tauxV=nbVict/nbCourses;if(tauxV>=0.15)pts.push({l:`Bon ratio victoires (${Math.round(tauxV*100)}%)`,p:1});}
 
+  // 15. Cheval déclassé (allocation précédente > allocation du jour de ≥10%)
+  const allocPrec=parseFloat(p.allocPrec)||0;
+  if(allocPrec>0 && allocJ>0){
+    const diffPct=((allocPrec-allocJ)/allocPrec)*100;
+    if(diffPct>=10) pts.push({l:`Déclassé (-${Math.round(diffPct)}% vs précédente)`,p:1});
+  }
+
+  // 16. Changement de catégorie favorable
+  if(allocPrec>0 && allocJ>0){
+    const ecart=Math.abs(allocPrec-allocJ)/Math.max(allocPrec,allocJ)*100;
+    if(ecart>=10){
+      const descend = allocPrec>allocJ;
+      if(descend) pts.push({l:'Descend de catégorie (≥10%)',p:1});
+    }
+  }
+
   return {pts,total:Math.max(0,pts.filter(x=>x.p>0).length-pts.filter(x=>x.p<0).length)};
 }
 
@@ -699,31 +715,45 @@ async function lancerScan2() {
       const participants = json.participants||json.partants||[];
       if(!participants.length) throw new Error('Aucun partant trouvé');
 
-      // Vraie Musique — calcul à partir de la chaîne musique (places des 3 dernières courses)
-      // Format musique PMU: "2a1a7a0a1a(25)..." → a=attelé, chiffre=place, D/0=disqualif
-      const parseMusique = mus => {
-        if(!mus) return [];
-        const clean = mus.replace(/\(\d+\)/g,''); // retire les années (25)
-        const matches = clean.match(/(\d+|D|A|T|R)[ammphco]/gi) || [];
-        return matches.slice(0,3).map(m => {
-          const ch = m.slice(0,-1).toUpperCase();
-          const pl = isNaN(parseInt(ch))||['D','A','T','R'].includes(ch)||parseInt(ch)>10 ? 10 : parseInt(ch);
-          return pl;
+      // Récupération des performances détaillées (allocations passées)
+      let perfMap = {};
+      try {
+        const perfRes = await fetch(`${BASE}/api/performances?date=${dateFmt}&reunion=${course.reunion}&course=${course.courseNum}`);
+        if(perfRes.ok){
+          const perfJson = await perfRes.json();
+          (perfJson.participants||[]).forEach(pp=>{
+            perfMap[pp.nomCheval||pp.nom] = pp.coursesCourues||[];
+          });
+        }
+      } catch(e) { /* perfs optionnelles */ }
+
+      // VRAIE MUSIQUE exacte (José Coves) — (100000÷allocation)×place sur 3 dernières courses
+      const calcVraieMusique = (nom) => {
+        const courses = (perfMap[nom]||[]).slice(0,3);
+        if(!courses.length) return 999;
+        const indices = courses.map(c=>{
+          const alloc = parseFloat(c.allocation)||0;
+          // place du cheval dans cette course passée
+          let place = 10;
+          const moi = (c.participants||[]).find(x=> (x.nomCheval||'').toUpperCase()===nom.toUpperCase());
+          if(moi?.place?.place){ const pl=parseInt(moi.place.place); place = (isNaN(pl)||pl>10)?10:pl; }
+          return alloc>0 ? (100000/alloc)*place : 10;
         });
+        return parseFloat((indices.reduce((a,b)=>a+b,0)/indices.length).toFixed(2));
       };
-      const vmArr=participants.map(p=>{
-        const places=parseMusique(p.musique||'');
-        const gains=parseFloat(p.gainsParticipant?.gainsCarriere||0)/100; // centimes→euros
-        // Indice = moyenne des places pondérée légèrement par les gains (plus de gains = mieux classé)
-        const moyPlace = places.length ? places.reduce((a,b)=>a+b,0)/places.length : 10;
-        return {nom:p.nom||'', ind:moyPlace, places};
-      }).sort((a,b)=>a.ind-b.ind);
-      const vmMap={};vmArr.forEach((v,i)=>{vmMap[v.nom]={rank:i+1,indice:v.ind.toFixed(1)};});
+
+      const vmArr=participants.map(p=>({
+        nom:p.nom||'', ind:calcVraieMusique(p.nom||'')
+      })).sort((a,b)=>a.ind-b.ind);
+      const vmMap={};vmArr.forEach((v,i)=>{vmMap[v.nom]={rank:i+1,indice:v.ind};});
 
       const scored=participants.map(p=>{
         const nom=p.nom||p.nomCheval||'';
         const vm=vmMap[nom];
-        const pvm={...p,nom,vmRank:vm?.rank,vmIndice:vm?.indice};
+        // Allocation de la dernière course (pour déclassé)
+        const lastCourse = (perfMap[nom]||[])[0];
+        const allocPrec = lastCourse ? parseFloat(lastCourse.allocation)||0 : 0;
+        const pvm={...p,nom,vmRank:vm?.rank,vmIndice:vm?.indice,allocPrec};
         const r=scoreE2(pvm,course);
         return {...pvm,...r};
       }).sort((a,b)=>b.total-a.total);
@@ -738,7 +768,7 @@ async function lancerScan2() {
         hippodrome:course.hippodrome,
         heure:course.heure,
         isQuinte:course.isQuinte,
-        top3:scored.slice(0,3).map(p=>({numero:p.numero||p.numPmu,nom:p.nom,score:p.total})),
+        top3:scored.slice(0,3).map(p=>({numero:p.numero||p.numPmu,nom:p.nom,score:p.total,cote:parseFloat(p.dernierRapportReference?.rapport||0)||null})),
         arrivee:null,
         statut:'en_attente',
       });
