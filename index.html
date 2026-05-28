@@ -815,6 +815,11 @@ async function lancerScan2() {
         heure:course.heure,
         isQuinte:course.isQuinte,
         top3:scored.slice(0,3).map(p=>({numero:p.numero||p.numPmu,nom:p.nom,score:p.total,cote:parseFloat(p.dernierRapportReference?.rapport||0)||null})),
+        // Critères de tous les partants (pour analyse d'importance)
+        chevaux:scored.map(p=>({
+          numero:p.numero||p.numPmu,
+          criteres:p.pts.filter(x=>x.p>0).map(x=>x.l.split(' (')[0]) // label sans parenthèses
+        })),
         arrivee:null,
         statut:'en_attente',
       });
@@ -995,6 +1000,10 @@ async function lancerBacktest() {
           hippodrome:c.hippodrome,
           isQuinte:c.isQuinte,
           top3,
+          chevaux:scored.map(p=>({
+            numero:p.numPmu,
+            criteres:p.pts.filter(x=>x.p>0).map(x=>x.l.split(' (')[0])
+          })),
           arrivee:c.arrivee.join('-'),
           statut:'complete',
           backtest:true,
@@ -1190,6 +1199,50 @@ function renderBilan() {
       <div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--green)">${esG.min}</div><div style="font-size:11px;color:var(--muted)">Écart min</div></div>
       <div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--gold)">${esG.moy}</div><div style="font-size:11px;color:var(--muted)">Écart moyen</div></div>
       <div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--orange)">${esG.max}</div><div style="font-size:11px;color:var(--muted)">Écart max</div></div>
+    </div>`;
+  }
+
+  // ── ANALYSE DE L'IMPORTANCE DES CRITÈRES ──
+  // Pour chaque critère : taux de placement (top 3) des chevaux qui le possèdent
+  const critStats = {}; // critère -> {placed, total}
+  done.forEach(a=>{
+    if(!a.chevaux) return;
+    const arr=(a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
+    const arr3=arr.slice(0,3);
+    a.chevaux.forEach(ch=>{
+      const estPlace = arr3.includes(ch.numero);
+      (ch.criteres||[]).forEach(crit=>{
+        if(!critStats[crit]) critStats[crit]={placed:0,total:0};
+        critStats[crit].total++;
+        if(estPlace) critStats[crit].placed++;
+      });
+    });
+  });
+
+  const critArr = Object.entries(critStats)
+    .map(([nom,s])=>({nom, taux:Math.round((s.placed/s.total)*100), n:s.total, placed:s.placed}))
+    .filter(c=>c.n>=5) // au moins 5 occurrences pour être significatif
+    .sort((a,b)=>b.taux-a.taux);
+
+  if(critArr.length){
+    h+=`<div class="stitle">Importance des critères (taux de placement top 3)</div>
+    <div class="card">
+      <div style="font-size:11px;color:var(--dim);margin-bottom:12px;line-height:1.5">
+        Pour chaque critère, % de chevaux qui finissent dans les 3 premiers. Plus le taux est élevé, plus le critère est prédictif.
+      </div>
+      ${critArr.map(c=>{
+        const couleur = c.taux>=40?'var(--green)':c.taux>=28?'var(--gold)':c.taux>=20?'var(--orange)':'var(--red)';
+        return `<div style="margin-bottom:11px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px;font-size:12px">
+            <span style="font-weight:600">${c.nom}</span>
+            <span style="font-family:var(--mono);font-weight:700;color:${couleur}">${c.taux}% <span style="color:var(--muted);font-weight:400">(${c.placed}/${c.n})</span></span>
+          </div>
+          <div class="pbar" style="height:7px"><div class="pbar-fill" style="width:${c.taux}%;background:${couleur}"></div></div>
+        </div>`;
+      }).join('')}
+      <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">
+        💡 Les critères en vert (≥40%) méritent plus de poids. Ceux en rouge (<20%) sont peu prédictifs.
+      </div>
     </div>`;
   }
 
