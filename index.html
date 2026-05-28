@@ -671,17 +671,24 @@ function scoreE2(p, course) {
   if(nbCourses>=10 && nbVict>=3){const tauxV=nbVict/nbCourses;if(tauxV>=0.15)pts.push({l:`Bon ratio victoires (${Math.round(tauxV*100)}%)`,p:1});}
 
   // 15. Cheval déclassé (allocation précédente > allocation du jour de ≥10%)
-  const allocPrec=parseFloat(p.allocPrec)||0;
-  if(allocPrec>0 && allocJ>0){
-    const diffPct=((allocPrec-allocJ)/allocPrec)*100;
+  let allocPrec=parseFloat(p.allocPrec)||0;
+  let allocJour=allocJ;
+  // Normalisation : si l'un est en centimes (×100), on aligne les unités
+  if(allocJour>0 && allocPrec>0){
+    const ratio = allocJour/allocPrec;
+    if(ratio>50) allocJour = allocJour/100;   // allocJour était en centimes
+    else if(ratio<0.02) allocPrec = allocPrec/100; // allocPrec en centimes
+  }
+  if(allocPrec>0 && allocJour>0){
+    const diffPct=((allocPrec-allocJour)/allocPrec)*100;
     if(diffPct>=10) pts.push({l:`Déclassé (-${Math.round(diffPct)}% vs précédente)`,p:1});
   }
 
   // 16. Changement de catégorie favorable
-  if(allocPrec>0 && allocJ>0){
-    const ecart=Math.abs(allocPrec-allocJ)/Math.max(allocPrec,allocJ)*100;
+  if(allocPrec>0 && allocJour>0){
+    const ecart=Math.abs(allocPrec-allocJour)/Math.max(allocPrec,allocJour)*100;
     if(ecart>=10){
-      const descend = allocPrec>allocJ;
+      const descend = allocPrec>allocJour;
       if(descend) pts.push({l:'Descend de catégorie (≥10%)',p:1});
     }
   }
