@@ -693,6 +693,11 @@ function scoreE2(p, course) {
     }
   }
 
+  // 17. Domine la hiérarchie directe/indirecte
+  if(p.domHierarchie && p.nbConfront>0){
+    pts.push({l:`Domine la hiérarchie (${p.nbConfront} confrontations)`,p:1});
+  }
+
   return {pts,total:Math.max(0,pts.filter(x=>x.p>0).length-pts.filter(x=>x.p<0).length)};
 }
 
@@ -754,13 +759,47 @@ async function lancerScan2() {
       })).sort((a,b)=>a.ind-b.ind);
       const vmMap={};vmArr.forEach((v,i)=>{vmMap[v.nom]={rank:i+1,indice:v.ind};});
 
+      // ── LIGNES DIRECTES / INDIRECTES ──
+      // Construit la place de chaque cheval du jour dans chacune de ses courses passées
+      const nomsJour = participants.map(p=>(p.nom||'').toUpperCase());
+      // placesParCheval[nom] = [{courseKey, place}]
+      const placesParCheval = {};
+      participants.forEach(p=>{
+        const nom=(p.nom||'').toUpperCase();
+        placesParCheval[nom]=[];
+        (perfMap[p.nom]||[]).forEach(c=>{
+          const key = `${c.date}_${c.hippodrome}`;
+          const moi=(c.participants||[]).find(x=>(x.nomCheval||'').toUpperCase()===nom);
+          const pl = moi?.place?.place ? parseInt(moi.place.place) : null;
+          if(pl && !isNaN(pl)) placesParCheval[nom].push({key, place:pl});
+        });
+      });
+      // Compte les victoires directes (A devant B dans une course commune)
+      const domDirect = {}; // nom -> nb de confrontations gagnées
+      nomsJour.forEach(n=>domDirect[n]=0);
+      for(let i=0;i<nomsJour.length;i++){
+        for(let j=i+1;j<nomsJour.length;j++){
+          const A=nomsJour[i], B=nomsJour[j];
+          let aGagne=0, bGagne=0;
+          placesParCheval[A].forEach(ca=>{
+            const cb=placesParCheval[B].find(x=>x.key===ca.key);
+            if(cb){ if(ca.place<cb.place) aGagne++; else if(cb.place<ca.place) bGagne++; }
+          });
+          if(aGagne>bGagne) domDirect[A]++;
+          else if(bGagne>aGagne) domDirect[B]++;
+        }
+      }
+      // Le(s) cheval(aux) qui domine(nt) le plus de confrontations directes
+      const maxDom = Math.max(0,...Object.values(domDirect));
+
       const scored=participants.map(p=>{
         const nom=p.nom||p.nomCheval||'';
         const vm=vmMap[nom];
         // Allocation de la dernière course (pour déclassé)
         const lastCourse = (perfMap[nom]||[])[0];
         const allocPrec = lastCourse ? parseFloat(lastCourse.allocation)||0 : 0;
-        const pvm={...p,nom,vmRank:vm?.rank,vmIndice:vm?.indice,allocPrec};
+        const domHierarchie = maxDom>0 && domDirect[(nom||'').toUpperCase()]===maxDom;
+        const pvm={...p,nom,vmRank:vm?.rank,vmIndice:vm?.indice,allocPrec,domHierarchie,nbConfront:domDirect[(nom||'').toUpperCase()]||0};
         const r=scoreE2(pvm,course);
         return {...pvm,...r};
       }).sort((a,b)=>b.total-a.total);
