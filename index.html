@@ -4,20 +4,20 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
 <meta name="apple-mobile-web-app-title" content="Bot PMU"/>
-<meta name="theme-color" content="#06070a"/>
+<meta name="theme-color" content="#f4f5f7"/>
 <title>Bot PMU · CDCH</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 :root {
-  --bg:#06070a; --sf:#0a0c14; --card:#0e1120; --border:#181e30;
-  --gold:#c9a54a; --goldg:rgba(201,165,74,.13); --goldd:#5a4418;
-  --green:#22b566; --greenb:#061810;
-  --orange:#cc6e28; --orangeb:#180e06;
-  --red:#c03838; --redb:#180606;
-  --blue:#3a8fd4; --blueb:#060f1a;
-  --text:#ddd8cc; --dim:#8890a8; --muted:#4a5068;
+  --bg:#f4f5f7; --sf:#ffffff; --card:#ffffff; --border:#e2e5ec;
+  --gold:#b08524; --goldg:rgba(176,133,36,.10); --goldd:#d9c48a;
+  --green:#1a9d52; --greenb:#e8f7ee;
+  --orange:#c25e1a; --orangeb:#fbeee2;
+  --red:#c83232; --redb:#fbe9e9;
+  --blue:#2b7cc4; --blueb:#e7f1fa;
+  --text:#1a1d26; --dim:#5a6072; --muted:#9aa0b0;
   --serif:'Cormorant Garamond',serif;
   --sans:'DM Sans',sans-serif;
   --mono:'JetBrains Mono',monospace;
@@ -34,9 +34,10 @@ input,select{outline:none;font-family:var(--sans);-webkit-appearance:none}
 /* ── BOTTOM TABS ── */
 .tabs-bar {
   position:fixed;bottom:0;left:0;right:0;
-  background:rgba(6,7,10,.96);
+  background:rgba(255,255,255,.97);
   backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
   border-top:1px solid var(--border);
+  box-shadow:0 -2px 12px rgba(0,0,0,.05);
   display:flex;
   padding:10px 0 calc(var(--sb) + 10px);
   z-index:100;
@@ -99,7 +100,7 @@ input,select{outline:none;font-family:var(--sans);-webkit-appearance:none}
 .stitle { font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:3px;text-transform:uppercase;margin:16px 0 10px; }
 
 /* ── CARDS ── */
-.card { background:var(--card);border:1px solid var(--border);border-radius:11px;padding:14px;margin-bottom:10px; }
+.card { background:var(--card);border:1px solid var(--border);border-radius:11px;padding:14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.04); }
 .chip { display:inline-flex;align-items:center;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600; }
 
 /* ── COURSE ROW ── */
@@ -900,7 +901,10 @@ async function lancerBacktest() {
           return {...pvm,...r};
         }).sort((a,b)=>b.total-a.total);
 
-        const top3 = scored.slice(0,3).map(p=>({numero:p.numPmu,nom:p.nom,score:p.total}));
+        const top3 = scored.slice(0,3).map(p=>({
+          numero:p.numPmu, nom:p.nom, score:p.total,
+          cote: parseFloat(p.dernierRapportReference?.rapport || p.dernierRapportDirect?.rapport || 0) || null
+        }));
 
         // Évite les doublons
         const exists = db.analyses.find(a=>a.date===dateFR && a.courseId===c.id);
@@ -953,6 +957,8 @@ function renderBilan() {
     total:done.length
   };
   const ecartsG=[];
+  // ROI Simple Gagnant sur cheval n°1 (mise 1€ par course)
+  let cotesN1=[], cotesGagnantes=[], gainTotal=0, miseTotal=0;
 
   done.forEach(a=>{
     const arr=(a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
@@ -960,11 +966,20 @@ function renderBilan() {
     if(!arr.length||top.length<1) return;
     const c1=top[0], c2=top[1], c3=top[2];
     const arr3=arr.slice(0,3), arr4=arr.slice(0,4);
+    const cote1=(a.top3||[])[0]?.cote||null;
 
     // Simple Gagnant (cheval arrive 1er)
-    if(c1===arr[0]) stats.sg1++;
+    const gagne1 = c1===arr[0];
+    if(gagne1) stats.sg1++;
     if(c2&&c2===arr[0]) stats.sg2++;
     if(c3&&c3===arr[0]) stats.sg3++;
+
+    // ROI sur cheval n°1
+    if(cote1&&cote1>0){
+      cotesN1.push(cote1);
+      miseTotal+=1;
+      if(gagne1){ gainTotal+=cote1; cotesGagnantes.push(cote1); }
+    }
 
     // Simple Placé (cheval dans top 3)
     if(c1&&arr3.includes(c1)) stats.sp1++;
@@ -990,6 +1005,11 @@ function renderBilan() {
   const col=v=>v>=50?'var(--green)':v>=30?'var(--gold)':v>=15?'var(--orange)':'var(--red)';
   const ecartStats=arr=>arr.length?{min:Math.min(...arr),max:Math.max(...arr),moy:parseFloat((arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1))}:{min:'-',max:'-',moy:'-'};
   const esG=ecartStats(ecartsG);
+  // Calculs ROI / cotes
+  const coteMoy = cotesN1.length ? (cotesN1.reduce((a,b)=>a+b,0)/cotesN1.length).toFixed(2) : '-';
+  const coteMoyGag = cotesGagnantes.length ? (cotesGagnantes.reduce((a,b)=>a+b,0)/cotesGagnantes.length).toFixed(2) : '-';
+  const roi = miseTotal>0 ? (((gainTotal-miseTotal)/miseTotal)*100).toFixed(2) : '-';
+  const tauxGlobal = pct(stats.sg1, stats.total);
 
   let h='';
 
@@ -1023,6 +1043,26 @@ function renderBilan() {
     h+='<div style="text-align:center;padding:40px 0;color:var(--muted);font-size:13px">Aucune analyse encore.<br/>Lancez un scan dans l\'onglet 🎯 ou un backtest ci-dessus</div>';
     el.innerHTML=h; return;
   }
+
+  // ── VUE D'ENSEMBLE (style BetMines) ──
+  h+=`<div class="card" style="border-color:var(--goldd)">
+    <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:12px">
+      <div style="font-family:var(--serif);font-size:19px;font-weight:700;color:var(--gold)">Vue d'ensemble</div>
+      <div style="font-size:11px;color:var(--muted)">Cheval n°1 · Simple Gagnant</div>
+    </div>
+    ${[
+      ['Alertes (courses jouables)', stats.total, 'var(--text)'],
+      ['Taux de réussite', tauxGlobal+'%', col(tauxGlobal)],
+      ['Cote moyenne', coteMoy, 'var(--text)'],
+      ['Cote moyenne des gagnantes', coteMoyGag, 'var(--text)'],
+      ['ROI', (roi!=='-'?(roi>0?'+':'')+roi+'%':'-'), roi!=='-'&&roi>0?'var(--green)':roi!=='-'&&roi<0?'var(--red)':'var(--text)'],
+    ].map(([label,val,color])=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:14px;color:var(--dim)">${label}</span>
+        <span style="font-family:var(--mono);font-size:17px;font-weight:700;color:${color}">${val}</span>
+      </div>`).join('')}
+    <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">ROI calculé sur une mise fictive de 1€ en Simple Gagnant sur le cheval n°1, à la cote de référence.</div>
+  </div>`;
 
   // Helper ligne de stat avec 3 colonnes
   const row3 = (titre, vals, refs) => {
