@@ -1301,7 +1301,7 @@ function renderBilan() {
     });
   }
 
-  h+=`<button class="btn btn-ghost" style="margin-top:8px" onclick="if(confirm('Effacer tout?')){localStorage.removeItem('${DB}');renderBilan();toast('Effacé')}">Effacer l'historique</button>`;
+  h+=`<button class="btn btn-ghost" style="margin-top:8px;margin-bottom:80px" onclick="if(confirm('Effacer tout?')){localStorage.removeItem('${DB}');renderBilan();toast('Effacé')}">Effacer l'historique</button>`;
   el.innerHTML=h;
 }
 
