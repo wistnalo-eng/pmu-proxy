@@ -673,6 +673,10 @@ function scoreE2(p, course) {
   // 15. Cheval déclassé (allocation précédente > allocation du jour de ≥10%)
   let allocPrec=parseFloat(p.allocPrec)||0;
   let allocJour=allocJ;
+  // DEBUG temporaire : affiche les valeurs d'allocation
+  if(allocPrec>0 || allocJour>0){
+    pts.push({l:`🔍debug: jour=${allocJour} préc=${allocPrec}`,p:0});
+  }
   // Normalisation : si l'un est en centimes (×100), on aligne les unités
   if(allocJour>0 && allocPrec>0){
     const ratio = allocJour/allocPrec;
@@ -824,7 +828,7 @@ function renderScan2Results() {
       scored.forEach((p,i)=>{
         const col=i<3?cols[i]:'var(--muted)';
         const num=p.numero||p.numPmu||'?';
-        const pos=p.pts.filter(x=>x.p>0), neg=p.pts.filter(x=>x.p<0);
+        const pos=p.pts.filter(x=>x.p>0), neg=p.pts.filter(x=>x.p<0), dbg=p.pts.filter(x=>x.p===0);
         h+=`<div class="cheval-card">
           <div class="cheval-head" onclick="this.nextElementSibling.classList.toggle('hidden')">
             <div class="cheval-num" style="background:${col}20;color:${col}">${num}</div>
@@ -837,6 +841,7 @@ function renderScan2Results() {
             <span style="color:var(--muted);font-size:11px;margin-left:4px">▼</span>
           </div>
           <div class="cheval-pts hidden">
+            ${dbg.map(x=>`<span class="chip" style="background:rgba(43,124,196,.12);color:var(--blue);font-size:10px">${x.l}</span>`).join('')}
             ${pos.map(x=>`<span class="chip" style="background:rgba(34,181,102,.12);color:var(--green);font-size:10px">✓ ${x.l}</span>`).join('')}
             ${neg.map(x=>`<span class="chip" style="background:rgba(192,56,56,.12);color:var(--red);font-size:10px">✗ ${x.l}</span>`).join('')}
             ${!pos.length&&!neg.length?`<span style="font-size:11px;color:var(--muted)">Données insuffisantes</span>`:''}
