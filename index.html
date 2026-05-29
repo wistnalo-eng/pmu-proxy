@@ -1041,6 +1041,7 @@ async function lancerBacktest() {
             numero:p.numPmu,
             criteres:p.pts.filter(x=>x.p>0).map(x=>x.l.split(' (')[0])
           })),
+          rapports:c.rapports||null,
           arrivee:c.arrivee.join('-'),
           statut:'complete',
           backtest:true,
@@ -1082,6 +1083,32 @@ function renderBilan() {
   const ecartsG=[];
   // ROI Simple Gagnant sur cheval n°1 (mise 1€ par course)
   let cotesN1=[], cotesGagnantes=[], gainTotal=0, miseTotal=0;
+  // ROI multi-paris
+  const roiData = {
+    sg:    {mise:0, gain:0, gagnes:0, joues:0}, // Simple Gagnant C1
+    sp:    {mise:0, gain:0, gagnes:0, joues:0}, // Simple Placé C1
+    cg12:  {mise:0, gain:0, gagnes:0, joues:0}, // Couplé Gagnant 1+2
+    cp12:  {mise:0, gain:0, gagnes:0, joues:0}, // Couplé Placé 1+2
+    s4:    {mise:0, gain:0, gagnes:0, joues:0}, // 2sur4 1+2+3
+  };
+
+  // Helper : extrait un rapport PMU par type de pari et combinaison
+  const getRapport = (rapports, typePari, combinaison) => {
+    if(!rapports?.length) return null;
+    const blocs = Array.isArray(rapports) ? rapports : (rapports.rapportsDefinitifs || []);
+    for(const b of blocs){
+      if(b.typePari === typePari){
+        for(const r of (b.rapports || [])){
+          // combinaison peut être "1" ou "1-2" ou "1-2-3"
+          const cmb = r.combinaison || r.libelle || '';
+          const cmbNorm = String(cmb).replace(/\s/g,'').toLowerCase();
+          const cibleNorm = String(combinaison).replace(/\s/g,'').toLowerCase();
+          if(cmbNorm === cibleNorm) return parseFloat(r.rapport) || 0;
+        }
+      }
+    }
+    return null;
+  };
 
   // ── CALCUL CORRECT DES ÉCARTS — séries de courses consécutives sans victoire C1 ──
   // Trier les analyses par date chronologique (plus ancienne → plus récente)
@@ -1125,6 +1152,39 @@ function renderBilan() {
       cotesN1.push(cote1);
       miseTotal+=1;
       if(gagne1){ gainTotal+=cote1; cotesGagnantes.push(cote1); }
+    }
+
+    // ── ROI MULTI-PARIS via rapports PMU réels ──
+    const rap = a.rapports;
+    if(rap){
+      // Simple Gagnant C1
+      const rsg = getRapport(rap, 'SIMPLE_GAGNANT', c1);
+      if(rsg!==null){ roiData.sg.joues++; roiData.sg.mise+=1; if(gagne1){ roiData.sg.gain+=rsg; roiData.sg.gagnes++; } }
+      // Simple Placé C1
+      const rsp = getRapport(rap, 'SIMPLE_PLACE', c1);
+      if(rsp!==null){ roiData.sp.joues++; roiData.sp.mise+=1; if(arr3.includes(c1)){ roiData.sp.gain+=rsp; roiData.sp.gagnes++; } }
+      // Couplé Gagnant 1+2 (ordre exact)
+      if(c2){
+        const rcg = getRapport(rap, 'COUPLE_GAGNANT', `${c1}-${c2}`);
+        if(rcg!==null){
+          roiData.cg12.joues++; roiData.cg12.mise+=1;
+          if(arr[0]===c1 && arr[1]===c2){ roiData.cg12.gain+=rcg; roiData.cg12.gagnes++; }
+        }
+        // Couplé Placé 1+2
+        const rcp = getRapport(rap, 'COUPLE_PLACE', `${c1}-${c2}`);
+        if(rcp!==null){
+          roiData.cp12.joues++; roiData.cp12.mise+=1;
+          if(arr3.includes(c1) && arr3.includes(c2)){ roiData.cp12.gain+=rcp; roiData.cp12.gagnes++; }
+        }
+      }
+      // 2SUR4 1+2+3
+      if(c2 && c3){
+        const rs4 = getRapport(rap, 'DEUX_SUR_QUATRE', `${c1}-${c2}-${c3}`);
+        if(rs4!==null){
+          roiData.s4.joues++; roiData.s4.mise+=1;
+          if(top.filter(n=>arr4.includes(n)).length>=2){ roiData.s4.gain+=rs4; roiData.s4.gagnes++; }
+        }
+      }
     }
 
     // Simple Placé (cheval dans top 3)
@@ -1205,6 +1265,42 @@ function renderBilan() {
       </div>`).join('')}
     <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">ROI calculé sur une mise fictive de 1€ en Simple Gagnant sur le cheval n°1, à la cote de référence.</div>
   </div>`;
+
+  // ── ROI MULTI-PARIS (rapports PMU réels) ──
+  const roiCalc = d => d.mise>0 ? (((d.gain-d.mise)/d.mise)*100).toFixed(1) : null;
+  const tauxCalc = d => d.joues>0 ? Math.round((d.gagnes/d.joues)*100) : 0;
+  const roiCol = v => v===null?'var(--text)':v>10?'var(--green)':v>0?'var(--gold)':'var(--red)';
+  const paris = [
+    {l:'🥇 Simple Gagnant C1',  d:roiData.sg,    c:'var(--green)'},
+    {l:'🎯 Simple Placé C1',     d:roiData.sp,    c:'var(--gold)'},
+    {l:'🔗 Couplé Gagnant 1+2',  d:roiData.cg12,  c:'var(--orange)'},
+    {l:'🔗 Couplé Placé 1+2',    d:roiData.cp12,  c:'var(--blue)'},
+    {l:'🎲 2SUR4 1+2+3',         d:roiData.s4,    c:'var(--gold)'},
+  ];
+
+  if(paris.some(p=>p.d.joues>0)){
+    h+=`<div class="card" style="border-color:var(--goldd);margin-top:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:12px">
+        <div style="font-family:var(--serif);font-size:19px;font-weight:700;color:var(--gold)">ROI multi-paris</div>
+        <div style="font-size:11px;color:var(--muted)">Mise 1€ · rapports PMU réels</div>
+      </div>
+      ${paris.map(p=>{
+        const r = roiCalc(p.d);
+        const t = tauxCalc(p.d);
+        return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span style="font-weight:600;font-size:13px;color:${p.c}">${p.l}</span>
+            <span style="font-family:var(--mono);font-size:16px;font-weight:700;color:${roiCol(r)}">${r===null?'-':((r>0?'+':'')+r+'%')}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">
+            <span>${t}% de réussite (${p.d.gagnes}/${p.d.joues})</span>
+            <span>Mise ${p.d.mise.toFixed(0)}€ → Gain ${p.d.gain.toFixed(2)}€</span>
+          </div>
+        </div>`;
+      }).join('')}
+      <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">⚠️ Disponible uniquement pour les courses backtestées après la mise à jour rapports.</div>
+    </div>`;
+  }
 
   // Helper ligne de stat avec 3 colonnes
   const row3 = (titre, vals, refs) => {

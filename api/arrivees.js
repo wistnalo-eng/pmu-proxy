@@ -28,13 +28,17 @@ export default async function handler(req, res) {
         if (!disc.includes("ATTELE")) continue;
 
         try {
-          const [partRes, perfRes] = await Promise.all([
+          const [partRes, perfRes, rapRes] = await Promise.all([
             fetch(
               `https://offline.turfinfo.api.pmu.fr/rest/client/7/programme/${date}/R${rNum}/C${course.numOrdre}/participants?specialisation=OFFLINE`,
               { headers: H }
             ),
             fetch(
               `https://offline.turfinfo.api.pmu.fr/rest/client/7/programme/${date}/R${rNum}/C${course.numOrdre}/performances-detaillees/pretty`,
+              { headers: H }
+            ).catch(() => null),
+            fetch(
+              `https://offline.turfinfo.api.pmu.fr/rest/client/7/programme/${date}/R${rNum}/C${course.numOrdre}/rapports-definitifs`,
               { headers: H }
             ).catch(() => null)
           ]);
@@ -51,6 +55,12 @@ export default async function handler(req, res) {
                 perfMap[pp.nomCheval || pp.nom] = pp.coursesCourues || [];
               });
             } catch (e) {}
+          }
+
+          // Récupère les rapports définitifs par type de pari
+          let rapports = null;
+          if (rapRes && rapRes.ok) {
+            try { rapports = await rapRes.json(); } catch(e) {}
           }
 
           const arrivee = participants
@@ -72,6 +82,7 @@ export default async function handler(req, res) {
               conditions: course.categorieParticularite || "",
               isQuinte: (course.libelle || "").toLowerCase().includes("quinté") || (course.categorieStatut || "").includes("QUINTE"),
               arrivee,
+              rapports,
               participants: participants.map(p => ({
                 numPmu: p.numPmu,
                 nom: p.nom,
