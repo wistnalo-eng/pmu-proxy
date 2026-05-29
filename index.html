@@ -577,8 +577,37 @@ function updateScan2Btn() {
 // ══════════════════════════════════════════════════════
 //  EXPERT N°2 — SCORING
 // ══════════════════════════════════════════════════════
-const TOP_DRV = ['raffin','rochard','lebourgeois','nivard','abrivard','mottier','ploquin'];
-const TOP_CUM = ['bazire','duvaldestin','abrivard','guarato','briand'];
+// ── LISTES OFFICIELLES PAR ANNÉE (LeTrot.com) ──
+const DRIVERS_BY_YEAR = {
+  2023: ['raffin','lebourgeois','a. abrivard','m. abrivard','rochard','thomain','békaert','bekaert'],
+  2024: ['raffin','lebourgeois','rochard','békaert','bekaert','m. abrivard','mottier','thomain'],
+  2025: ['raffin','rochard','lebourgeois','mottier','a. abrivard','thomain','békaert','bekaert'],
+  2026: ['raffin','rochard','mottier','a. abrivard','m. abrivard','lebourgeois'],
+};
+const CUMULARDS_BY_YEAR = {
+  2023: ['bazire','mottier','derieux','m. abrivard','a. abrivard','n. bazire'],
+  2024: ['bazire','mottier','derieux','m. abrivard','a. abrivard','n. bazire'],
+  2025: ['mottier','derieux','bazire','m. abrivard','a. abrivard','n. bazire'],
+  2026: ['mottier','bazire','derieux','m. abrivard','a. abrivard','n. bazire'],
+};
+const TRAINERS_BY_YEAR = {
+  2023: ['duvaldestin','bazire','l-c. abrivard','lc. abrivard','guarato','terry','derieux'],
+  2024: ['duvaldestin','terry','n. bazire','l-c. abrivard','lc. abrivard','guarato','derieux'],
+  2025: ['duvaldestin','terry','bazire','l-c. abrivard','lc. abrivard','guarato','derieux'],
+  2026: ['duvaldestin','l-c. abrivard','lc. abrivard','terry','n. bazire','guarato','derieux'],
+};
+
+// Récupère la bonne liste selon l'année de la course
+const yearFromCourse = (course) => {
+  // Tente de récupérer l'année depuis la date du backtest ou de l'analyse en cours
+  if(course?._year) return course._year;
+  if(S.selDate) return S.selDate.getFullYear();
+  return new Date().getFullYear();
+};
+const getTopDrivers  = year => DRIVERS_BY_YEAR[year]  || DRIVERS_BY_YEAR[2025];
+const getCumulards   = year => CUMULARDS_BY_YEAR[year] || CUMULARDS_BY_YEAR[2025];
+const getTopTrainers = year => TRAINERS_BY_YEAR[year]  || TRAINERS_BY_YEAR[2025];
+
 const NUM_STARS=[4,5,6], NUM_ELIM=[1,2,10,11,17,18], MOIS_HIV=[10,11,12,1,2,3];
 
 const calcVM = courses => {
@@ -626,10 +655,16 @@ function scoreE2(p, course) {
   if(driverChange===false && driver) pts.push({l:'Driver attitré (inchangé)',p:1});
 
   // 4. Driver top LeTrot
-  if(TOP_DRV.some(d=>driver.includes(d))) pts.push({l:`Driver top LeTrot (${p.driver})`,p:1});
+  // Sélectionne les listes selon l'année de la course
+  const year = yearFromCourse(course);
+  const TOP_DRV_Y = getTopDrivers(year);
+  const TOP_CUM_Y = getCumulards(year);
+  const TOP_TRAINERS_Y = getTopTrainers(year);
+
+  if(TOP_DRV_Y.some(d=>driver.includes(d))) pts.push({l:`Driver top LeTrot (${p.driver})`,p:1});
 
   // 5. Cumulard top 6 (entraîneur = driver)
-  const isCum=TOP_CUM.some(c=>driver.includes(c)||entr.includes(c));
+  const isCum=TOP_CUM_Y.some(c=>driver.includes(c)||entr.includes(c));
   const dEq=driver&&entr&&(driver.split(/[\s.]+/).some(w=>w.length>3&&entr.includes(w))||entr.split(/[\s.]+/).some(w=>w.length>3&&driver.includes(w)));
   if(isCum&&dEq) pts.push({l:'Cumulard top 6 (entr=driver)',p:1});
 
@@ -931,7 +966,7 @@ async function lancerBacktest() {
   if(from>to){toast('Date début après date fin');return;}
 
   const nbDays = Math.round((to-from)/(1000*60*60*24))+1;
-  if(nbDays>14){toast('Maximum 14 jours par backtest (perfs enrichies)');return;}
+  if(nbDays>30){toast('Maximum 30 jours par backtest');return;}
 
   const btn = document.getElementById('bt-btn');
   const prog = document.getElementById('bt-progress');
@@ -958,6 +993,8 @@ async function lancerBacktest() {
 
       for(const c of courses){
         traités++;
+        // Marque la course avec l'année pour les listes dynamiques drivers/cumulards
+        c._year = d.getFullYear();
         // Applique Expert 1
         const e1 = scoreE1({
           hippodrome:c.hippodrome, distance:c.distance,
