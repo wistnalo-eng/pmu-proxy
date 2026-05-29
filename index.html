@@ -1131,16 +1131,18 @@ function renderBilan() {
 
   // Helper : extrait un rapport PMU par type de pari et combinaison
   const getRapport = (rapports, typePari, combinaison) => {
-    if(!rapports?.length) return null;
+    if(!rapports) return null;
+    // Les rapports sont un tableau direct [{typePari, rapports:[...]}]
     const blocs = Array.isArray(rapports) ? rapports : (rapports.rapportsDefinitifs || []);
     for(const b of blocs){
       if(b.typePari === typePari){
         for(const r of (b.rapports || [])){
-          // combinaison peut être "1" ou "1-2" ou "1-2-3"
-          const cmb = r.combinaison || r.libelle || '';
-          const cmbNorm = String(cmb).replace(/\s/g,'').toLowerCase();
-          const cibleNorm = String(combinaison).replace(/\s/g,'').toLowerCase();
-          if(cmbNorm === cibleNorm) return parseFloat(r.rapport) || 0;
+          const cmb = String(r.combinaison || '').replace(/\s/g,'').toLowerCase();
+          const cible = String(combinaison).replace(/\s/g,'').toLowerCase();
+          if(cmb === cible){
+            // dividendePourUnEuro est en centimes (370 = 3.70€)
+            return (parseFloat(r.dividendePourUnEuro) || 0) / 100;
+          }
         }
       }
     }
@@ -1194,21 +1196,37 @@ function renderBilan() {
     // ── ROI MULTI-PARIS via rapports PMU réels ──
     const rap = a.rapports;
     if(rap){
+      // Cherche un rapport en testant les ordres de combinaison possibles
+      const findRap = (type, nums) => {
+        // teste toutes les permutations d'ordre (PMU trie parfois différemment)
+        const variantes = [
+          nums.join('-'),
+          [...nums].reverse().join('-'),
+          [...nums].sort((x,y)=>x-y).join('-'),
+          [...nums].sort((x,y)=>y-x).join('-'),
+        ];
+        for(const v of variantes){
+          const r = getRapport(rap, type, v);
+          if(r!==null) return r;
+        }
+        return null;
+      };
+
       // Simple Gagnant C1
-      const rsg = getRapport(rap, 'SIMPLE_GAGNANT', c1);
+      const rsg = getRapport(rap, 'SIMPLE_GAGNANT', String(c1));
       if(rsg!==null){ roiData.sg.joues++; roiData.sg.mise+=1; if(gagne1){ roiData.sg.gain+=rsg; roiData.sg.gagnes++; } }
       // Simple Placé C1
-      const rsp = getRapport(rap, 'SIMPLE_PLACE', c1);
+      const rsp = getRapport(rap, 'SIMPLE_PLACE', String(c1));
       if(rsp!==null){ roiData.sp.joues++; roiData.sp.mise+=1; if(arr3.includes(c1)){ roiData.sp.gain+=rsp; roiData.sp.gagnes++; } }
-      // Couplé Gagnant 1+2 (ordre exact)
+      // Couplé Gagnant 1+2 (ordre exact de l'arrivée)
       if(c2){
-        const rcg = getRapport(rap, 'COUPLE_GAGNANT', `${c1}-${c2}`);
+        const rcg = findRap('COUPLE_GAGNANT', [c1,c2]);
         if(rcg!==null){
           roiData.cg12.joues++; roiData.cg12.mise+=1;
           if(arr[0]===c1 && arr[1]===c2){ roiData.cg12.gain+=rcg; roiData.cg12.gagnes++; }
         }
         // Couplé Placé 1+2
-        const rcp = getRapport(rap, 'COUPLE_PLACE', `${c1}-${c2}`);
+        const rcp = findRap('COUPLE_PLACE', [c1,c2]);
         if(rcp!==null){
           roiData.cp12.joues++; roiData.cp12.mise+=1;
           if(arr3.includes(c1) && arr3.includes(c2)){ roiData.cp12.gain+=rcp; roiData.cp12.gagnes++; }
@@ -1216,7 +1234,7 @@ function renderBilan() {
       }
       // 2SUR4 1+2+3
       if(c2 && c3){
-        const rs4 = getRapport(rap, 'DEUX_SUR_QUATRE', `${c1}-${c2}-${c3}`);
+        const rs4 = findRap('DEUX_SUR_QUATRE', [c1,c2,c3]);
         if(rs4!==null){
           roiData.s4.joues++; roiData.s4.mise+=1;
           if(top.filter(n=>arr4.includes(n)).length>=2){ roiData.s4.gain+=rs4; roiData.s4.gagnes++; }
