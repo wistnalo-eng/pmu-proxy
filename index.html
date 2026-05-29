@@ -1046,6 +1046,29 @@ function renderBilan() {
   // ROI Simple Gagnant sur cheval n°1 (mise 1€ par course)
   let cotesN1=[], cotesGagnantes=[], gainTotal=0, miseTotal=0;
 
+  // ── CALCUL CORRECT DES ÉCARTS — séries de courses consécutives sans victoire C1 ──
+  // Trier les analyses par date chronologique (plus ancienne → plus récente)
+  const parseDate = ds => {
+    const m=(ds||'').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    return m ? new Date(+m[3],+m[2]-1,+m[1]).getTime() : 0;
+  };
+  const doneSorted = [...done].sort((a,b)=>parseDate(a.date)-parseDate(b.date));
+  let serieActuelle = 0;
+  doneSorted.forEach(a=>{
+    const arr=(a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
+    const top=(a.top3||[]).map(p=>p.numero);
+    if(!arr.length||!top.length) return;
+    const gagne = top[0]===arr[0];
+    if(gagne){
+      ecartsG.push(serieActuelle); // écart = nb de courses sans victoire AVANT cette victoire
+      serieActuelle = 0;
+    } else {
+      serieActuelle++;
+    }
+  });
+  // Ajoute la série en cours à la fin (si on n'a pas gagné la dernière)
+  if(serieActuelle>0) ecartsG.push(serieActuelle);
+
   done.forEach(a=>{
     const arr=(a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
     const top=(a.top3||[]).map(p=>p.numero);
@@ -1081,10 +1104,6 @@ function renderBilan() {
     if(c1&&c2&&arr4.includes(c1)&&arr4.includes(c2)) stats.s4_12++;
     if(c1&&c3&&arr4.includes(c1)&&arr4.includes(c3)) stats.s4_13++;
     if(c2&&c3&&arr4.includes(c2)&&arr4.includes(c3)) stats.s4_23++;
-
-    // Écart du cheval n°1
-    const pos=arr.indexOf(c1)+1;
-    if(pos>0) ecartsG.push(pos);
   });
 
   const pct=(n,t)=>t>0?Math.round((n/t)*100):0;
@@ -1194,7 +1213,7 @@ function renderBilan() {
   // Écarts (cheval n°1)
   if(ecartsG.length){
     const esG={min:Math.min(...ecartsG),max:Math.max(...ecartsG),moy:(ecartsG.reduce((a,b)=>a+b,0)/ecartsG.length).toFixed(1)};
-    h+=`<div class="stitle">Écarts — position réelle du cheval n°1</div>
+    h+=`<div class="stitle">Écarts — séries de courses sans victoire du cheval n°1</div>
     <div class="card" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center">
       <div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--green)">${esG.min}</div><div style="font-size:11px;color:var(--muted)">Écart min</div></div>
       <div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--gold)">${esG.moy}</div><div style="font-size:11px;color:var(--muted)">Écart moyen</div></div>
