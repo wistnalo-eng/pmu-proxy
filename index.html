@@ -931,7 +931,7 @@ async function lancerBacktest() {
   if(from>to){toast('Date début après date fin');return;}
 
   const nbDays = Math.round((to-from)/(1000*60*60*24))+1;
-  if(nbDays>40){toast('Maximum 40 jours par backtest');return;}
+  if(nbDays>14){toast('Maximum 14 jours par backtest (perfs enrichies)');return;}
 
   const btn = document.getElementById('bt-btn');
   const prog = document.getElementById('bt-progress');
@@ -963,22 +963,59 @@ async function lancerBacktest() {
           hippodrome:c.hippodrome, distance:c.distance,
           partants:c.partants, conditions:c.conditions
         });
-        if(e1.verdict!=='JOUABLE') continue; // on ne garde que les jouables
+        if(e1.verdict!=='JOUABLE') continue;
 
-        // Applique Expert 2 sur les partants
-        const parseMus = mus => {
-          if(!mus) return 10;
-          const clean=mus.replace(/\(\d+\)/g,'');
-          const m=clean.match(/(\d+|D|A|T|R)[ammphco]/gi)||[];
-          const places=m.slice(0,3).map(x=>{const ch=x.slice(0,-1).toUpperCase();return isNaN(parseInt(ch))||['D','A','T','R'].includes(ch)||parseInt(ch)>10?10:parseInt(ch);});
-          return places.length?places.reduce((a,b)=>a+b,0)/places.length:10;
+        // VRAIE MUSIQUE exacte avec les vraies allocations (José Coves)
+        const calcVraieMusique = (p) => {
+          const courses = (p.coursesCourues || []).slice(0,3);
+          if(!courses.length) return 999;
+          const indices = courses.map(cc=>{
+            const alloc = parseFloat(cc.allocation)||0;
+            const pl = cc.place;
+            const place = (!pl || isNaN(parseInt(pl)) || parseInt(pl)>10) ? 10 : parseInt(pl);
+            return alloc>0 ? (100000/alloc)*place : 10;
+          });
+          return parseFloat((indices.reduce((a,b)=>a+b,0)/indices.length).toFixed(2));
         };
-        const vmArr=c.participants.map(p=>({nom:p.nom,ind:parseMus(p.musique)})).sort((a,b)=>a.ind-b.ind);
-        const vmMap={};vmArr.forEach((v,i)=>{vmMap[v.nom]={rank:i+1,indice:v.ind.toFixed(1)};});
+        const vmArr=c.participants.map(p=>({nom:p.nom,ind:calcVraieMusique(p)})).sort((a,b)=>a.ind-b.ind);
+        const vmMap={};vmArr.forEach((v,i)=>{vmMap[v.nom]={rank:i+1,indice:v.ind};});
+
+        // LIGNES DIRECTES — confrontations passées entre chevaux du jour
+        const nomsJour = c.participants.map(p=>(p.nom||'').toUpperCase());
+        const placesParCheval = {};
+        c.participants.forEach(p=>{
+          const nom=(p.nom||'').toUpperCase();
+          placesParCheval[nom]=[];
+          (p.coursesCourues||[]).forEach(cc=>{
+            const key = `${cc.date}_${cc.hippodrome}`;
+            const moi=(cc.participants||[]).find(x=>(x.nomCheval||'').toUpperCase()===nom);
+            const pl = moi?.place ? parseInt(moi.place) : null;
+            if(pl && !isNaN(pl)) placesParCheval[nom].push({key, place:pl});
+          });
+        });
+        const domDirect = {}; nomsJour.forEach(n=>domDirect[n]=0);
+        for(let i=0;i<nomsJour.length;i++){
+          for(let j=i+1;j<nomsJour.length;j++){
+            const A=nomsJour[i], B=nomsJour[j];
+            let aGagne=0, bGagne=0;
+            placesParCheval[A].forEach(ca=>{
+              const cb=placesParCheval[B].find(x=>x.key===ca.key);
+              if(cb){ if(ca.place<cb.place) aGagne++; else if(cb.place<ca.place) bGagne++; }
+            });
+            if(aGagne>bGagne) domDirect[A]++;
+            else if(bGagne>aGagne) domDirect[B]++;
+          }
+        }
+        const maxDom = Math.max(0,...Object.values(domDirect));
 
         const scored=c.participants.map(p=>{
           const vm=vmMap[p.nom];
-          const pvm={...p,vmRank:vm?.rank,vmIndice:vm?.indice};
+          // Allocation précédente pour déclassé
+          const lastCourse = (p.coursesCourues||[])[0];
+          const allocPrec = lastCourse ? parseFloat(lastCourse.allocation)||0 : 0;
+          const nomUp = (p.nom||'').toUpperCase();
+          const domHierarchie = maxDom>0 && domDirect[nomUp]===maxDom;
+          const pvm={...p,vmRank:vm?.rank,vmIndice:vm?.indice,allocPrec,domHierarchie,nbConfront:domDirect[nomUp]||0};
           const r=scoreE2(pvm,c);
           return {...pvm,...r};
         }).sort((a,b)=>b.total-a.total);
@@ -1141,7 +1178,7 @@ function renderBilan() {
       <div style="font-size:11px;color:var(--dim);margin-bottom:5px" id="bt-status">—</div>
       <div class="pbar" style="height:8px"><div class="pbar-fill" id="bt-bar" style="width:0%;background:var(--blue)"></div></div>
     </div>
-    <div style="font-size:10px;color:var(--muted);margin-top:8px;font-style:italic">⚠️ Conseil : traitez par semaine pour éviter la surcharge (≈30s par semaine)</div>
+    <div style="font-size:10px;color:var(--muted);margin-top:8px;font-style:italic">⚠️ Backtest enrichi (perfs détaillées) — max 14 jours, ≈2-3 min par semaine</div>
   </div>`;
 
   if(!done.length && !wait.length){

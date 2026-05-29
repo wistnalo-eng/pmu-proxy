@@ -13,7 +13,6 @@ export default async function handler(req, res) {
   };
 
   try {
-    // 1. Récupère le programme du jour
     const progRes = await fetch(`https://offline.turfinfo.api.pmu.fr/rest/client/7/programme/${date}`, { headers: H });
     if (!progRes.ok) throw new Error(`Programme HTTP ${progRes.status}`);
     const progData = await progRes.json();
@@ -21,7 +20,6 @@ export default async function handler(req, res) {
 
     const results = [];
 
-    // 2. Pour chaque course de trot attelé, récupère les arrivées
     for (const reunion of reunions) {
       const rNum = reunion.numOfficiel || reunion.numReunion;
       const hippo = reunion.hippodrome?.libelleLong || reunion.hippodrome?.libelleCourt || "";
@@ -30,15 +28,31 @@ export default async function handler(req, res) {
         if (!disc.includes("ATTELE")) continue;
 
         try {
-          const partRes = await fetch(
-            `https://offline.turfinfo.api.pmu.fr/rest/client/7/programme/${date}/R${rNum}/C${course.numOrdre}/participants?specialisation=OFFLINE`,
-            { headers: H }
-          );
+          const [partRes, perfRes] = await Promise.all([
+            fetch(
+              `https://offline.turfinfo.api.pmu.fr/rest/client/7/programme/${date}/R${rNum}/C${course.numOrdre}/participants?specialisation=OFFLINE`,
+              { headers: H }
+            ),
+            fetch(
+              `https://offline.turfinfo.api.pmu.fr/rest/client/7/programme/${date}/R${rNum}/C${course.numOrdre}/performances-detaillees/pretty`,
+              { headers: H }
+            ).catch(() => null)
+          ]);
+
           if (!partRes.ok) continue;
           const partData = await partRes.json();
           const participants = partData.participants || [];
 
-          // Construit l'arrivée à partir de ordreArrivee
+          let perfMap = {};
+          if (perfRes && perfRes.ok) {
+            try {
+              const perfData = await perfRes.json();
+              (perfData.participants || []).forEach(pp => {
+                perfMap[pp.nomCheval || pp.nom] = pp.coursesCourues || [];
+              });
+            } catch (e) {}
+          }
+
           const arrivee = participants
             .filter(p => p.ordreArrivee && p.ordreArrivee > 0)
             .sort((a, b) => a.ordreArrivee - b.ordreArrivee)
@@ -58,7 +72,6 @@ export default async function handler(req, res) {
               conditions: course.categorieParticularite || "",
               isQuinte: (course.libelle || "").toLowerCase().includes("quinté") || (course.categorieStatut || "").includes("QUINTE"),
               arrivee,
-              // Données partants pour le scoring E1+E2 du backtest
               participants: participants.map(p => ({
                 numPmu: p.numPmu,
                 nom: p.nom,
@@ -75,10 +88,23 @@ export default async function handler(req, res) {
                 avisEntraineur: p.avisEntraineur,
                 ordreArrivee: p.ordreArrivee,
                 dernierRapportReference: p.dernierRapportReference,
+                coursesCourues: (perfMap[p.nom] || []).slice(0, 3).map(c => ({
+                  allocation: c.allocation,
+                  hippodrome: c.hippodrome,
+                  date: c.date,
+                  place: (() => {
+                    const moi = (c.participants || []).find(x => (x.nomCheval || '').toUpperCase() === (p.nom || '').toUpperCase());
+                    return moi?.place?.place || null;
+                  })(),
+                  participants: (c.participants || []).map(x => ({
+                    nomCheval: x.nomCheval,
+                    place: x.place?.place || null
+                  }))
+                }))
               })),
             });
           }
-        } catch (e) { /* skip course en erreur */ }
+        } catch (e) {}
       }
     }
 
