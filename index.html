@@ -1238,12 +1238,23 @@ function renderBilan() {
           if(rcp!==null){ roiData.cp12.gain+=rcp; roiData.cp12.gagnes++; }
         }
       }
-      // 2SUR4 1+2+3
+      // 2SUR4 — UNIQUEMENT si le pari existe (courses Quinté+ / 14+ partants)
       if(c2 && c3){
-        roiData.s4.joues++; roiData.s4.mise+=1;
-        if(top.filter(n=>arr4.includes(n)).length>=2){
-          const rs4 = findRap('DEUX_SUR_QUATRE', [c1,c2,c3]);
-          if(rs4!==null){ roiData.s4.gain+=rs4; roiData.s4.gagnes++; }
+        const blocs = Array.isArray(rap) ? rap : (rap.rapportsDefinitifs || []);
+        const bloc2s4 = blocs.find(b=>b.typePari==='DEUX_SUR_QUATRE');
+        if(bloc2s4){ // le pari n'existe que sur certaines courses
+          roiData.s4.joues++; roiData.s4.mise+=1;
+          const nosPaires = [[c1,c2],[c1,c3],[c2,c3]];
+          let rapportGagnant = null;
+          for(const r of (bloc2s4.rapports||[])){
+            const cmb = String(r.combinaison||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n)).sort((a,b)=>a-b).join('-');
+            for(const paire of nosPaires){
+              const pNorm = [...paire].sort((a,b)=>a-b).join('-');
+              if(cmb===pNorm){ rapportGagnant = (parseFloat(r.dividendePourUnEuro)||0)/100; break; }
+            }
+            if(rapportGagnant!==null) break;
+          }
+          if(rapportGagnant!==null){ roiData.s4.gain+=rapportGagnant; roiData.s4.gagnes++; }
         }
       }
     }
