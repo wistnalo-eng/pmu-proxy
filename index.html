@@ -1212,32 +1212,38 @@ function renderBilan() {
         return null;
       };
 
-      // Simple Gagnant C1
-      const rsg = getRapport(rap, 'SIMPLE_GAGNANT', String(c1));
-      if(rsg!==null){ roiData.sg.joues++; roiData.sg.mise+=1; if(gagne1){ roiData.sg.gain+=rsg; roiData.sg.gagnes++; } }
-      // Simple Placé C1
-      const rsp = getRapport(rap, 'SIMPLE_PLACE', String(c1));
-      if(rsp!==null){ roiData.sp.joues++; roiData.sp.mise+=1; if(arr3.includes(c1)){ roiData.sp.gain+=rsp; roiData.sp.gagnes++; } }
-      // Couplé Gagnant 1+2 (ordre exact de l'arrivée)
+      // Simple Gagnant C1 — toujours joué, gain si C1 gagne
+      roiData.sg.joues++; roiData.sg.mise+=1;
+      if(gagne1){
+        const rsg = getRapport(rap, 'SIMPLE_GAGNANT', String(c1));
+        if(rsg!==null){ roiData.sg.gain+=rsg; roiData.sg.gagnes++; }
+      }
+      // Simple Placé C1 — toujours joué, gain si C1 placé
+      roiData.sp.joues++; roiData.sp.mise+=1;
+      if(arr3.includes(c1)){
+        const rsp = getRapport(rap, 'SIMPLE_PLACE', String(c1));
+        if(rsp!==null){ roiData.sp.gain+=rsp; roiData.sp.gagnes++; }
+      }
+      // Couplé Gagnant 1+2
       if(c2){
-        const rcg = findRap('COUPLE_GAGNANT', [c1,c2]);
-        if(rcg!==null){
-          roiData.cg12.joues++; roiData.cg12.mise+=1;
-          if(arr[0]===c1 && arr[1]===c2){ roiData.cg12.gain+=rcg; roiData.cg12.gagnes++; }
+        roiData.cg12.joues++; roiData.cg12.mise+=1;
+        if(arr[0]===c1 && arr[1]===c2){
+          const rcg = findRap('COUPLE_GAGNANT', [c1,c2]);
+          if(rcg!==null){ roiData.cg12.gain+=rcg; roiData.cg12.gagnes++; }
         }
         // Couplé Placé 1+2
-        const rcp = findRap('COUPLE_PLACE', [c1,c2]);
-        if(rcp!==null){
-          roiData.cp12.joues++; roiData.cp12.mise+=1;
-          if(arr3.includes(c1) && arr3.includes(c2)){ roiData.cp12.gain+=rcp; roiData.cp12.gagnes++; }
+        roiData.cp12.joues++; roiData.cp12.mise+=1;
+        if(arr3.includes(c1) && arr3.includes(c2)){
+          const rcp = findRap('COUPLE_PLACE', [c1,c2]);
+          if(rcp!==null){ roiData.cp12.gain+=rcp; roiData.cp12.gagnes++; }
         }
       }
       // 2SUR4 1+2+3
       if(c2 && c3){
-        const rs4 = findRap('DEUX_SUR_QUATRE', [c1,c2,c3]);
-        if(rs4!==null){
-          roiData.s4.joues++; roiData.s4.mise+=1;
-          if(top.filter(n=>arr4.includes(n)).length>=2){ roiData.s4.gain+=rs4; roiData.s4.gagnes++; }
+        roiData.s4.joues++; roiData.s4.mise+=1;
+        if(top.filter(n=>arr4.includes(n)).length>=2){
+          const rs4 = findRap('DEUX_SUR_QUATRE', [c1,c2,c3]);
+          if(rs4!==null){ roiData.s4.gain+=rs4; roiData.s4.gagnes++; }
         }
       }
     }
