@@ -1238,23 +1238,28 @@ function renderBilan() {
           if(rcp!==null){ roiData.cp12.gain+=rcp; roiData.cp12.gagnes++; }
         }
       }
-      // 2SUR4 — UNIQUEMENT si le pari existe (courses Quinté+ / 14+ partants)
+      // 2SUR4 — on joue C1,C2,C3 = 3 combinaisons (mise 3 unités)
       if(c2 && c3){
         const blocs = Array.isArray(rap) ? rap : (rap.rapportsDefinitifs || []);
         const bloc2s4 = blocs.find(b=>b.typePari==='DEUX_SUR_QUATRE');
-        if(bloc2s4){ // le pari n'existe que sur certaines courses
-          roiData.s4.joues++; roiData.s4.mise+=1;
+        if(bloc2s4){ // le pari n'existe que sur les courses de 10+ partants
+          roiData.s4.joues++;
+          roiData.s4.mise+=3; // 3 combinaisons jouées (C1-C2, C1-C3, C2-C3)
           const nosPaires = [[c1,c2],[c1,c3],[c2,c3]];
-          let rapportGagnant = null;
-          for(const r of (bloc2s4.rapports||[])){
-            const cmb = String(r.combinaison||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n)).sort((a,b)=>a-b).join('-');
-            for(const paire of nosPaires){
-              const pNorm = [...paire].sort((a,b)=>a-b).join('-');
-              if(cmb===pNorm){ rapportGagnant = (parseFloat(r.dividendePourUnEuro)||0)/100; break; }
+          let gainCourse = 0, aGagne = false;
+          // Compte TOUTES nos paires gagnantes (si 3 chevaux placés → plusieurs rapports)
+          for(const paire of nosPaires){
+            const pNorm = [...paire].sort((a,b)=>a-b).join('-');
+            for(const r of (bloc2s4.rapports||[])){
+              const cmb = String(r.combinaison||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n)).sort((a,b)=>a-b).join('-');
+              if(cmb===pNorm){
+                gainCourse += (parseFloat(r.dividendePourUnEuro)||0)/100;
+                aGagne = true;
+                break;
+              }
             }
-            if(rapportGagnant!==null) break;
           }
-          if(rapportGagnant!==null){ roiData.s4.gain+=rapportGagnant; roiData.s4.gagnes++; }
+          if(aGagne){ roiData.s4.gain+=gainCourse; roiData.s4.gagnes++; }
         }
       }
     }
@@ -1347,14 +1352,14 @@ function renderBilan() {
     {l:'🎯 Simple Placé C1',     d:roiData.sp,    c:'var(--gold)'},
     {l:'🔗 Couplé Gagnant 1+2',  d:roiData.cg12,  c:'var(--orange)'},
     {l:'🔗 Couplé Placé 1+2',    d:roiData.cp12,  c:'var(--blue)'},
-    {l:'🎲 2SUR4 1+2+3',         d:roiData.s4,    c:'var(--gold)'},
+    {l:'🎲 2SUR4 (1+2+3, 3 combi)',  d:roiData.s4,    c:'var(--gold)'},
   ];
 
   if(paris.some(p=>p.d.joues>0)){
     h+=`<div class="card" style="border-color:var(--goldd);margin-top:10px">
       <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:12px">
         <div style="font-family:var(--serif);font-size:19px;font-weight:700;color:var(--gold)">ROI multi-paris</div>
-        <div style="font-size:11px;color:var(--muted)">Mise 1€ · rapports PMU réels</div>
+        <div style="font-size:11px;color:var(--muted)">Rapports PMU réels · mise réelle</div>
       </div>
       ${paris.map(p=>{
         const r = roiCalc(p.d);
