@@ -1186,11 +1186,27 @@ function renderBilan() {
     if(c2&&c2===arr[0]) stats.sg2++;
     if(c3&&c3===arr[0]) stats.sg3++;
 
-    // ROI sur cheval n°1
+    // ROI sur cheval n°1 — utilise le RAPPORT RÉEL PMU si dispo, sinon la cote de référence
+    let rapportReel1 = null;
+    if(a.rapports && gagne1){
+      // cherche le rapport SG réel du gagnant
+      const blocs = Array.isArray(a.rapports) ? a.rapports : (a.rapports.rapportsDefinitifs||[]);
+      const blocSG = blocs.find(b=>b.typePari==='SIMPLE_GAGNANT');
+      if(blocSG){
+        const r = (blocSG.rapports||[]).find(x=>String(x.combinaison)===String(c1));
+        if(r) rapportReel1 = (parseFloat(r.dividendePourUnEuro)||0)/100;
+      }
+    }
+    // Pour la cote moyenne globale, on garde la cote de référence (dispo sur toutes les courses)
     if(cote1&&cote1>0){
       cotesN1.push(cote1);
       miseTotal+=1;
-      if(gagne1){ gainTotal+=cote1; cotesGagnantes.push(cote1); }
+      if(gagne1){
+        // Gain = rapport réel si dispo, sinon cote de référence
+        const gain = rapportReel1!==null ? rapportReel1 : cote1;
+        gainTotal+=gain;
+        cotesGagnantes.push(gain);
+      }
     }
 
     // ── ROI MULTI-PARIS via rapports PMU réels ──
