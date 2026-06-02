@@ -666,15 +666,31 @@ const TRAINERS_BY_YEAR = {
 };
 
 // Récupère la bonne liste selon l'année de la course
+// Flag global pour activer/désactiver le décalage semestriel (test)
+let DECALAGE_SEMESTRIEL = true;
+
 const yearFromCourse = (course) => {
-  // Tente de récupérer l'année depuis la date du backtest ou de l'analyse en cours
-  if(course?._year) return course._year;
-  if(S.selDate) return S.selDate.getFullYear();
-  return new Date().getFullYear();
+  // Récupère année + mois depuis le backtest ou la date sélectionnée
+  let y, m;
+  if(course?._year){ y = course._year; m = course._month || 7; }
+  else if(S.selDate){ y = S.selDate.getFullYear(); m = S.selDate.getMonth()+1; }
+  else { const n=new Date(); y=n.getFullYear(); m=n.getMonth()+1; }
+  // Décalage semestriel : jan-juin, le classement de l'année en cours
+  // n'est pas encore représentatif → on utilise celui de l'année précédente
+  if(DECALAGE_SEMESTRIEL && m<=6) return y-1;
+  return y;
 };
-const getTopDrivers  = year => DRIVERS_BY_YEAR[year]  || DRIVERS_BY_YEAR[2025];
-const getCumulards   = year => CUMULARDS_BY_YEAR[year] || CUMULARDS_BY_YEAR[2025];
-const getTopTrainers = year => TRAINERS_BY_YEAR[year]  || TRAINERS_BY_YEAR[2025];
+const nearestYear = (obj, year) => {
+  if(obj[year]) return obj[year];
+  const annees = Object.keys(obj).map(Number).sort((a,b)=>a-b);
+  // prend l'année disponible la plus proche (≤ year de préférence)
+  let best = annees[0];
+  for(const a of annees){ if(a<=year) best=a; }
+  return obj[best];
+};
+const getTopDrivers  = year => nearestYear(DRIVERS_BY_YEAR, year);
+const getCumulards   = year => nearestYear(CUMULARDS_BY_YEAR, year);
+const getTopTrainers = year => nearestYear(TRAINERS_BY_YEAR, year);
 
 const NUM_STARS=[4,5,6], NUM_ELIM=[1,2,10,11,17,18], MOIS_HIV=[10,11,12,1,2,3];
 
@@ -1061,8 +1077,9 @@ async function lancerBacktest() {
 
       for(const c of courses){
         traités++;
-        // Marque la course avec l'année pour les listes dynamiques drivers/cumulards
+        // Marque la course avec l'année ET le mois pour les listes dynamiques
         c._year = d.getFullYear();
+        c._month = d.getMonth()+1;
         // Applique Expert 1
         const e1 = scoreE1({
           hippodrome:c.hippodrome, distance:c.distance,
@@ -1191,8 +1208,9 @@ async function lancerBacktest() {
         }
 
         // Évite les doublons
-        const exists = db.analyses.find(a=>a.date===dateFR && a.courseId===c.id);
-        if(exists) continue;
+        // Remplace l'ancienne version si elle existe (permet de re-backtester avec nouvelle logique)
+        const existsIdx = db.analyses.findIndex(a=>a.date===dateFR && a.courseId===c.id);
+        if(existsIdx>=0) db.analyses.splice(existsIdx,1);
 
         db.analyses.unshift({
           id:Date.now()+Math.random(),
