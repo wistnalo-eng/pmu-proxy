@@ -1291,20 +1291,27 @@ function renderBilan() {
   };
   const doneSorted = [...done].sort((a,b)=>parseDate(a.date)-parseDate(b.date));
   let serieActuelle = 0;
+  const ecartsSP=[], ecartsCP=[]; let serieSP=0, serieCP=0;
   doneSorted.forEach(a=>{
     const arr=(a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
     const top=(a.top3||[]).map(p=>p.numero);
     if(!arr.length||!top.length) return;
-    const gagne = top[0]===arr[0];
-    if(gagne){
-      ecartsG.push(serieActuelle); // écart = nb de courses sans victoire AVANT cette victoire
-      serieActuelle = 0;
-    } else {
-      serieActuelle++;
-    }
+    const arr3=arr.slice(0,3);
+    const c1=top[0], c2=top[1];
+    // Écart SG (cheval n°1 gagne)
+    const gagne = c1===arr[0];
+    if(gagne){ ecartsG.push(serieActuelle); serieActuelle=0; } else { serieActuelle++; }
+    // Écart SP (cheval n°1 placé top 3)
+    const placeSP = c1 && arr3.includes(c1);
+    if(placeSP){ ecartsSP.push(serieSP); serieSP=0; } else { serieSP++; }
+    // Écart CP (1 ET 2 placés top 3)
+    const gagneCP = c1 && c2 && arr3.includes(c1) && arr3.includes(c2);
+    if(gagneCP){ ecartsCP.push(serieCP); serieCP=0; } else { serieCP++; }
   });
   // Ajoute la série en cours à la fin (si on n'a pas gagné la dernière)
   if(serieActuelle>0) ecartsG.push(serieActuelle);
+  if(serieSP>0) ecartsSP.push(serieSP);
+  if(serieCP>0) ecartsCP.push(serieCP);
 
   done.forEach(a=>{
     const arr=(a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
@@ -1448,6 +1455,7 @@ function renderBilan() {
   // ── ROI MULTI-PARIS (rapports PMU réels) ──
   const roiCalc = d => d.mise>0 ? (((d.gain-d.mise)/d.mise)*100).toFixed(1) : null;
   const tauxCalc = d => d.joues>0 ? Math.round((d.gagnes/d.joues)*100) : 0;
+  const rapMoyCalc = d => d.gagnes>0 ? (d.gain/d.gagnes).toFixed(2) : null; // rapport moyen quand on gagne
   const roiCol = v => v===null?'var(--text)':v>10?'var(--green)':v>0?'var(--gold)':'var(--red)';
   const paris = [
     {l:'🥇 Simple Gagnant C1',  d:roiData.sg,    c:'var(--green)'},
@@ -1466,6 +1474,7 @@ function renderBilan() {
       ${paris.map(p=>{
         const r = roiCalc(p.d);
         const t = tauxCalc(p.d);
+        const rapMoy = rapMoyCalc(p.d);
         return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
             <span style="font-weight:600;font-size:13px;color:${p.c}">${p.l}</span>
@@ -1473,11 +1482,11 @@ function renderBilan() {
           </div>
           <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">
             <span>${t}% de réussite (${p.d.gagnes}/${p.d.joues})</span>
-            <span>Mise ${p.d.mise.toFixed(0)}€ → Gain ${p.d.gain.toFixed(2)}€</span>
+            <span>Rapport moyen : ${rapMoy?rapMoy+'€':'-'}</span>
           </div>
         </div>`;
       }).join('')}
-      <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">⚠️ Disponible uniquement pour les courses backtestées après la mise à jour rapports.</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">💡 Rapport moyen = gain moyen touché à chaque réussite (pour 1€ misé).</div>
     </div>`;
   }
 
@@ -1525,11 +1534,33 @@ function renderBilan() {
   // Écarts (cheval n°1)
   if(ecartsG.length){
     const esG={min:Math.min(...ecartsG),max:Math.max(...ecartsG),moy:(ecartsG.reduce((a,b)=>a+b,0)/ecartsG.length).toFixed(1)};
-    h+=`<div class="stitle">Écarts — séries de courses sans victoire du cheval n°1</div>
+    h+=`<div class="stitle">Écarts — séries sans victoire du cheval n°1 (Simple Gagnant)</div>
     <div class="card" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center">
       <div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--green)">${esG.min}</div><div style="font-size:11px;color:var(--muted)">Écart min</div></div>
       <div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--gold)">${esG.moy}</div><div style="font-size:11px;color:var(--muted)">Écart moyen</div></div>
       <div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--orange)">${esG.max}</div><div style="font-size:11px;color:var(--muted)">Écart max</div></div>
+    </div>`;
+  }
+
+  // Écarts Simple Placé C1
+  if(ecartsSP.length){
+    const es={min:Math.min(...ecartsSP),max:Math.max(...ecartsSP),moy:(ecartsSP.reduce((a,b)=>a+b,0)/ecartsSP.length).toFixed(1)};
+    h+=`<div class="stitle">Écarts — séries sans placement du cheval n°1 (Simple Placé)</div>
+    <div class="card" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center">
+      <div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--green)">${es.min}</div><div style="font-size:11px;color:var(--muted)">Écart min</div></div>
+      <div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--gold)">${es.moy}</div><div style="font-size:11px;color:var(--muted)">Écart moyen</div></div>
+      <div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--orange)">${es.max}</div><div style="font-size:11px;color:var(--muted)">Écart max</div></div>
+    </div>`;
+  }
+
+  // Écarts Couplé Placé 1+2
+  if(ecartsCP.length){
+    const es={min:Math.min(...ecartsCP),max:Math.max(...ecartsCP),moy:(ecartsCP.reduce((a,b)=>a+b,0)/ecartsCP.length).toFixed(1)};
+    h+=`<div class="stitle">Écarts — séries sans réussite du Couplé Placé 1+2</div>
+    <div class="card" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center">
+      <div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--green)">${es.min}</div><div style="font-size:11px;color:var(--muted)">Écart min</div></div>
+      <div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--gold)">${es.moy}</div><div style="font-size:11px;color:var(--muted)">Écart moyen</div></div>
+      <div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--orange)">${es.max}</div><div style="font-size:11px;color:var(--muted)">Écart max</div></div>
     </div>`;
   }
 
