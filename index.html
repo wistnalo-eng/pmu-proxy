@@ -1268,10 +1268,13 @@ function renderBilan() {
     if(c2&&c2===arr[0]) stats.sg2++;
     if(c3&&c3===arr[0]) stats.sg3++;
 
-    // ROI sur cheval n°1 — utilise le RAPPORT RÉEL PMU si dispo, sinon la cote de référence
+    // ROI sur cheval n°1 — RAPPORT RÉEL PMU UNIQUEMENT (cohérent avec multi-paris)
     let rapportReel1 = null;
-    if(a.rapports && gagne1){
-      // cherche le rapport SG réel du gagnant
+    if(a.sg_rap !== undefined){
+      // Format pré-calculé (Option A) : sg_rap = rapport réel si C1 a gagné, sinon null
+      rapportReel1 = a.sg_rap;
+    } else if(a.rapports && gagne1){
+      // Ancien format : cherche le rapport SG brut
       const blocs = Array.isArray(a.rapports) ? a.rapports : (a.rapports.rapportsDefinitifs||[]);
       const blocSG = blocs.find(b=>b.typePari==='SIMPLE_GAGNANT');
       if(blocSG){
@@ -1279,16 +1282,12 @@ function renderBilan() {
         if(r) rapportReel1 = (parseFloat(r.dividendePourUnEuro)||0)/100;
       }
     }
-    // Pour la cote moyenne globale, on garde la cote de référence (dispo sur toutes les courses)
-    if(cote1&&cote1>0){
-      cotesN1.push(cote1);
-      miseTotal+=1;
-      if(gagne1){
-        // Gain = rapport réel si dispo, sinon cote de référence
-        const gain = rapportReel1!==null ? rapportReel1 : cote1;
-        gainTotal+=gain;
-        cotesGagnantes.push(gain);
-      }
+    // Mise comptée sur toutes les courses ; gain = rapport réel (0 si manquant)
+    if(cote1&&cote1>0) cotesN1.push(cote1); // cote moyenne = cote de référence (info profil)
+    miseTotal+=1;
+    if(gagne1 && rapportReel1!==null && rapportReel1>0){
+      gainTotal+=rapportReel1;
+      cotesGagnantes.push(rapportReel1);
     }
 
     // ── ROI MULTI-PARIS — valeurs pré-calculées (Option A) ou ancien format ──
@@ -1391,7 +1390,7 @@ function renderBilan() {
         <span style="font-size:14px;color:var(--dim)">${label}</span>
         <span style="font-family:var(--mono);font-size:17px;font-weight:700;color:${color}">${val}</span>
       </div>`).join('')}
-    <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">ROI calculé sur le rapport réel PMU du gagnant (Simple Gagnant, cheval n°1). La cote moyenne reste la cote de référence prévisionnelle.</div>
+    <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">ROI calculé sur le rapport réel PMU du gagnant (identique au ROI Simple Gagnant ci-dessous). La cote moyenne reste la cote de référence prévisionnelle.</div>
   </div>`;
 
   // ── ROI MULTI-PARIS (rapports PMU réels) ──
