@@ -301,7 +301,23 @@ const S = {
 // ══════════════════════════════════════════════════════
 const DB = 'botpmu_v5';
 const dbGet = () => { try { return JSON.parse(localStorage.getItem(DB)||'{"analyses":[]}'); } catch { return {analyses:[]}; } };
-const dbSet = d => { try { localStorage.setItem(DB, JSON.stringify(d)); } catch {} };
+const dbSet = d => {
+  try {
+    localStorage.setItem(DB, JSON.stringify(d));
+    return true;
+  } catch(e) {
+    // localStorage plein — tente de libérer de la place en supprimant les plus anciennes
+    if(e.name==='QuotaExceededError' || e.code===22){
+      try {
+        d.analyses = d.analyses.slice(0, Math.floor(d.analyses.length*0.8));
+        localStorage.setItem(DB, JSON.stringify(d));
+        toast('⚠️ Stockage plein — 20% des plus anciennes données supprimées');
+        return true;
+      } catch { toast('❌ Stockage plein, impossible de sauvegarder'); }
+    }
+    return false;
+  }
+};
 const dbAdd = entry => { const d=dbGet(); d.analyses.unshift(entry); if(d.analyses.length>200) d.analyses.pop(); dbSet(d); };
 const dbUpd = (id,upd) => { const d=dbGet(); const i=d.analyses.findIndex(a=>a.id===id); if(i>=0) d.analyses[i]={...d.analyses[i],...upd}; dbSet(d); };
 
@@ -1062,6 +1078,66 @@ async function lancerBacktest() {
           cote: parseFloat(p.dernierRapportReference?.rapport || p.dernierRapportDirect?.rapport || 0) || null
         }));
 
+        // ── PRÉ-CALCUL DES RAPPORTS (Option A — stockage minimal) ──
+        const getRap = (raps, typePari, combinaison) => {
+          if(!raps) return null;
+          const blocs = Array.isArray(raps) ? raps : (raps.rapportsDefinitifs||[]);
+          const b = blocs.find(x=>x.typePari===typePari);
+          if(!b) return null;
+          const cible = String(combinaison).trim().toLowerCase();
+          const r = (b.rapports||[]).find(x=>String(x.combinaison||'').trim().toLowerCase()===cible);
+          return r ? (parseFloat(r.dividendePourUnEuro)||0)/100 : null;
+        };
+
+        const arr = c.arrivee; // tableau de numéros
+        const n1 = top3[0]?.numero, n2 = top3[1]?.numero, n3 = top3[2]?.numero;
+        const arr3 = arr.slice(0,3), arr4 = arr.slice(0,4);
+
+        // SG : rapport du gagnant réel (si notre C1 a gagné)
+        let sg_rap = null;
+        if(n1 && arr[0]===n1) sg_rap = getRap(c.rapports,'SIMPLE_GAGNANT',String(n1));
+
+        // SP : rapport du placé C1 (si dans top 3)
+        let sp_rap = null;
+        if(n1 && arr3.includes(n1)) sp_rap = getRap(c.rapports,'SIMPLE_PLACE',String(n1));
+
+        // CG : couplé gagnant 1+2 (ordre exact)
+        let cg_rap = null;
+        if(n1 && n2 && arr[0]===n1 && arr[1]===n2){
+          const variantes = [`${n1}-${n2}`,`${n2}-${n1}`];
+          for(const v of variantes){ cg_rap = getRap(c.rapports,'COUPLE_GAGNANT',v); if(cg_rap) break; }
+        }
+
+        // CP : couplé placé 1+2 (les deux dans top 3)
+        let cp_rap = null;
+        if(n1 && n2 && arr3.includes(n1) && arr3.includes(n2)){
+          const variantes = [[n1,n2]].map(p=>[...p].sort((a,b)=>a-b).join('-'));
+          for(const v of variantes){ cp_rap = getRap(c.rapports,'COUPLE_PLACE',v); if(cp_rap) break; }
+          if(!cp_rap){ // essaie les deux ordres
+            cp_rap = getRap(c.rapports,'COUPLE_PLACE',`${n1}-${n2}`) || getRap(c.rapports,'COUPLE_PLACE',`${n2}-${n1}`);
+          }
+        }
+
+        // 2SUR4 : une de nos paires dans les 4 premiers
+        let s4_rap = null, s4_eligible = false;
+        if(n1 && n2 && n3 && c.rapports){
+          const blocs = Array.isArray(c.rapports) ? c.rapports : (c.rapports.rapportsDefinitifs||[]);
+          const bloc2s4 = blocs.find(b=>b.typePari==='DEUX_SUR_QUATRE');
+          if(bloc2s4){
+            s4_eligible = true;
+            let gainS4 = 0;
+            const nosPaires = [[n1,n2],[n1,n3],[n2,n3]];
+            for(const paire of nosPaires){
+              const pNorm = [...paire].sort((a,b)=>a-b).join('-');
+              for(const r of (bloc2s4.rapports||[])){
+                const cmb = String(r.combinaison||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n)).sort((a,b)=>a-b).join('-');
+                if(cmb===pNorm){ gainS4 += (parseFloat(r.dividendePourUnEuro)||0)/100; break; }
+              }
+            }
+            if(gainS4>0) s4_rap = gainS4;
+          }
+        }
+
         // Évite les doublons
         const exists = db.analyses.find(a=>a.date===dateFR && a.courseId===c.id);
         if(exists) continue;
@@ -1078,7 +1154,13 @@ async function lancerBacktest() {
             numero:p.numPmu,
             criteres:p.pts.filter(x=>x.p>0).map(x=>x.l.split(' (')[0])
           })),
-          rapports:c.rapports||null,
+          // 5 valeurs pré-calculées (ultra-compact, ~50 octets vs 3-5KB)
+          sg_rap,   // rapport SG réel si C1 gagne, sinon null
+          sp_rap,   // rapport SP réel si C1 placé, sinon null
+          cg_rap,   // rapport CG réel si 1+2 dans l'ordre, sinon null
+          cp_rap,   // rapport CP réel si 1+2 placés, sinon null
+          s4_rap,   // rapport(s) 2sur4 si une paire gagnante, sinon null
+          s4_eligible, // true si le pari 2sur4 existait pour cette course
           arrivee:c.arrivee.join('-'),
           statut:'complete',
           backtest:true,
@@ -1209,75 +1291,28 @@ function renderBilan() {
       }
     }
 
-    // ── ROI MULTI-PARIS via rapports PMU réels ──
-    const rap = a.rapports;
-    if(rap){
-      // Cherche un rapport en testant les ordres de combinaison possibles
-      const findRap = (type, nums) => {
-        // teste toutes les permutations d'ordre (PMU trie parfois différemment)
-        const variantes = [
-          nums.join('-'),
-          [...nums].reverse().join('-'),
-          [...nums].sort((x,y)=>x-y).join('-'),
-          [...nums].sort((x,y)=>y-x).join('-'),
-        ];
-        for(const v of variantes){
-          const r = getRapport(rap, type, v);
-          if(r!==null) return r;
-        }
-        return null;
-      };
-
-      // Simple Gagnant C1 — toujours joué, gain si C1 gagne
+    // ── ROI MULTI-PARIS — valeurs pré-calculées (Option A) ou ancien format ──
+    const hasPreCalc = a.sg_rap !== undefined || a.s4_eligible !== undefined;
+    if(hasPreCalc){
+      // Nouveau format compact
       roiData.sg.joues++; roiData.sg.mise+=1;
-      if(gagne1){
-        const rsg = getRapport(rap, 'SIMPLE_GAGNANT', String(c1));
-        if(rsg!==null){ roiData.sg.gain+=rsg; roiData.sg.gagnes++; }
-      }
-      // Simple Placé C1 — toujours joué, gain si C1 placé
+      if(a.sg_rap){ roiData.sg.gain+=a.sg_rap; roiData.sg.gagnes++; }
       roiData.sp.joues++; roiData.sp.mise+=1;
-      if(arr3.includes(c1)){
-        const rsp = getRapport(rap, 'SIMPLE_PLACE', String(c1));
-        if(rsp!==null){ roiData.sp.gain+=rsp; roiData.sp.gagnes++; }
-      }
-      // Couplé Gagnant 1+2
-      if(c2){
-        roiData.cg12.joues++; roiData.cg12.mise+=1;
-        if(arr[0]===c1 && arr[1]===c2){
-          const rcg = findRap('COUPLE_GAGNANT', [c1,c2]);
-          if(rcg!==null){ roiData.cg12.gain+=rcg; roiData.cg12.gagnes++; }
-        }
-        // Couplé Placé 1+2
-        roiData.cp12.joues++; roiData.cp12.mise+=1;
-        if(arr3.includes(c1) && arr3.includes(c2)){
-          const rcp = findRap('COUPLE_PLACE', [c1,c2]);
-          if(rcp!==null){ roiData.cp12.gain+=rcp; roiData.cp12.gagnes++; }
-        }
-      }
-      // 2SUR4 — on joue C1,C2,C3 = 3 combinaisons (mise 3 unités)
-      if(c2 && c3){
-        const blocs = Array.isArray(rap) ? rap : (rap.rapportsDefinitifs || []);
-        const bloc2s4 = blocs.find(b=>b.typePari==='DEUX_SUR_QUATRE');
-        if(bloc2s4){ // le pari n'existe que sur les courses de 10+ partants
-          roiData.s4.joues++;
-          roiData.s4.mise+=3; // 3 combinaisons jouées (C1-C2, C1-C3, C2-C3)
-          const nosPaires = [[c1,c2],[c1,c3],[c2,c3]];
-          let gainCourse = 0, aGagne = false;
-          // Compte TOUTES nos paires gagnantes (si 3 chevaux placés → plusieurs rapports)
-          for(const paire of nosPaires){
-            const pNorm = [...paire].sort((a,b)=>a-b).join('-');
-            for(const r of (bloc2s4.rapports||[])){
-              const cmb = String(r.combinaison||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n)).sort((a,b)=>a-b).join('-');
-              if(cmb===pNorm){
-                gainCourse += (parseFloat(r.dividendePourUnEuro)||0)/100;
-                aGagne = true;
-                break;
-              }
-            }
-          }
-          if(aGagne){ roiData.s4.gain+=gainCourse; roiData.s4.gagnes++; }
-        }
-      }
+      if(a.sp_rap){ roiData.sp.gain+=a.sp_rap; roiData.sp.gagnes++; }
+      roiData.cg12.joues++; roiData.cg12.mise+=1;
+      if(a.cg_rap){ roiData.cg12.gain+=a.cg_rap; roiData.cg12.gagnes++; }
+      roiData.cp12.joues++; roiData.cp12.mise+=1;
+      if(a.cp_rap){ roiData.cp12.gain+=a.cp_rap; roiData.cp12.gagnes++; }
+      if(a.s4_eligible){ roiData.s4.joues++; roiData.s4.mise+=3; if(a.s4_rap){ roiData.s4.gain+=a.s4_rap; roiData.s4.gagnes++; } }
+    } else if(a.rapports){
+      // Ancien format (rétrocompatibilité)
+      const rap = a.rapports;
+      const fR = (type,comb) => { const blocs=Array.isArray(rap)?rap:(rap.rapportsDefinitifs||[]); const b=blocs.find(x=>x.typePari===type); if(!b) return null; const c=String(comb).toLowerCase(); const r=(b.rapports||[]).find(x=>String(x.combinaison||'').toLowerCase()===c); return r?(parseFloat(r.dividendePourUnEuro)||0)/100:null; };
+      const fRV = (type,nums) => { for(const v of [nums.join('-'),[...nums].reverse().join('-'),[...nums].sort((a,b)=>a-b).join('-')]){ const r=fR(type,v); if(r) return r; } return null; };
+      roiData.sg.joues++; roiData.sg.mise+=1; if(gagne1){ const r=fR('SIMPLE_GAGNANT',String(c1)); if(r){ roiData.sg.gain+=r; roiData.sg.gagnes++; } }
+      roiData.sp.joues++; roiData.sp.mise+=1; if(arr3.includes(c1)){ const r=fR('SIMPLE_PLACE',String(c1)); if(r){ roiData.sp.gain+=r; roiData.sp.gagnes++; } }
+      if(c2){ roiData.cg12.joues++; roiData.cg12.mise+=1; if(arr[0]===c1&&arr[1]===c2){ const r=fRV('COUPLE_GAGNANT',[c1,c2]); if(r){ roiData.cg12.gain+=r; roiData.cg12.gagnes++; } } roiData.cp12.joues++; roiData.cp12.mise+=1; if(arr3.includes(c1)&&arr3.includes(c2)){ const r=fRV('COUPLE_PLACE',[c1,c2]); if(r){ roiData.cp12.gain+=r; roiData.cp12.gagnes++; } } }
+      if(c2&&c3){ const blocs=Array.isArray(rap)?rap:(rap.rapportsDefinitifs||[]); const b2s4=blocs.find(x=>x.typePari==='DEUX_SUR_QUATRE'); if(b2s4){ roiData.s4.joues++; roiData.s4.mise+=3; let g=0; [[c1,c2],[c1,c3],[c2,c3]].forEach(p=>{ const pN=[...p].sort((a,b)=>a-b).join('-'); (b2s4.rapports||[]).forEach(r=>{ const cm=String(r.combinaison||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n)).sort((a,b)=>a-b).join('-'); if(cm===pN) g+=(parseFloat(r.dividendePourUnEuro)||0)/100; }); }); if(g>0){ roiData.s4.gain+=g; roiData.s4.gagnes++; } } }
     }
 
     // Simple Placé (cheval dans top 3)
@@ -1356,7 +1391,7 @@ function renderBilan() {
         <span style="font-size:14px;color:var(--dim)">${label}</span>
         <span style="font-family:var(--mono);font-size:17px;font-weight:700;color:${color}">${val}</span>
       </div>`).join('')}
-    <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">ROI calculé sur une mise fictive de 1€ en Simple Gagnant sur le cheval n°1, à la cote de référence.</div>
+    <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">ROI calculé sur le rapport réel PMU du gagnant (Simple Gagnant, cheval n°1). La cote moyenne reste la cote de référence prévisionnelle.</div>
   </div>`;
 
   // ── ROI MULTI-PARIS (rapports PMU réels) ──
