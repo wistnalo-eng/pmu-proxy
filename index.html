@@ -297,29 +297,81 @@ const S = {
 };
 
 // ══════════════════════════════════════════════════════
-//  STORAGE
+//  STORAGE — IndexedDB (50MB+) avec cache mémoire synchrone
 // ══════════════════════════════════════════════════════
 const DB = 'botpmu_v5';
-const dbGet = () => { try { return JSON.parse(localStorage.getItem(DB)||'{"analyses":[]}'); } catch { return {analyses:[]}; } };
-const dbSet = d => {
+const IDB_NAME = 'botpmu_db';
+const IDB_STORE = 'data';
+let DBCACHE = { analyses: [] };  // cache mémoire (lecture synchrone)
+let idbHandle = null;
+
+// Ouvre la connexion IndexedDB
+function openIDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if(!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE);
+    };
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror = e => reject(e.target.error);
+  });
+}
+function idbRead(key) {
+  return new Promise((resolve, reject) => {
+    const tx = idbHandle.transaction(IDB_STORE, 'readonly');
+    const req = tx.objectStore(IDB_STORE).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+function idbWrite(key, value) {
+  return new Promise((resolve, reject) => {
+    const tx = idbHandle.transaction(IDB_STORE, 'readwrite');
+    const req = tx.objectStore(IDB_STORE).put(value, key);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// Initialise : charge IndexedDB en cache, migre localStorage si premier lancement
+async function initDB() {
   try {
-    localStorage.setItem(DB, JSON.stringify(d));
-    return true;
-  } catch(e) {
-    // localStorage plein — tente de libérer de la place en supprimant les plus anciennes
-    if(e.name==='QuotaExceededError' || e.code===22){
+    idbHandle = await openIDB();
+    let data = await idbRead(DB);
+    if(!data){
+      // Migration unique depuis localStorage
       try {
-        d.analyses = d.analyses.slice(0, Math.floor(d.analyses.length*0.8));
-        localStorage.setItem(DB, JSON.stringify(d));
-        toast('⚠️ Stockage plein — 20% des plus anciennes données supprimées');
-        return true;
-      } catch { toast('❌ Stockage plein, impossible de sauvegarder'); }
+        const ls = localStorage.getItem(DB);
+        if(ls){
+          data = JSON.parse(ls);
+          await idbWrite(DB, data);
+          // On garde localStorage en backup pour l'instant (sécurité)
+        }
+      } catch {}
     }
-    return false;
+    DBCACHE = data || { analyses: [] };
+  } catch(e) {
+    // Fallback localStorage si IndexedDB indisponible
+    try { DBCACHE = JSON.parse(localStorage.getItem(DB)||'{"analyses":[]}'); }
+    catch { DBCACHE = {analyses:[]}; }
   }
+}
+
+const dbGet = () => DBCACHE;
+const dbSet = d => {
+  DBCACHE = d;
+  // Persistance async (fire-and-forget) avec fallback localStorage
+  if(idbHandle){
+    idbWrite(DB, d).catch(()=>{ try{localStorage.setItem(DB,JSON.stringify(d));}catch{} });
+  } else {
+    try{ localStorage.setItem(DB, JSON.stringify(d)); }catch{}
+  }
+  return true;
 };
-const dbAdd = entry => { const d=dbGet(); d.analyses.unshift(entry); if(d.analyses.length>200) d.analyses.pop(); dbSet(d); };
+const dbAdd = entry => { const d=dbGet(); d.analyses.unshift(entry); if(d.analyses.length>10000) d.analyses.pop(); dbSet(d); };
 const dbUpd = (id,upd) => { const d=dbGet(); const i=d.analyses.findIndex(a=>a.id===id); if(i>=0) d.analyses[i]={...d.analyses[i],...upd}; dbSet(d); };
+
 
 // ══════════════════════════════════════════════════════
 //  NAVIGATION
@@ -1170,7 +1222,7 @@ async function lancerBacktest() {
     } catch(e) { /* skip */ }
   }
 
-  if(db.analyses.length>2000) db.analyses=db.analyses.slice(0,2000);
+  if(db.analyses.length>10000) db.analyses=db.analyses.slice(0,10000);
   dbSet(db);
 
   status.textContent = `✅ Terminé — ${ajoutés} courses jouables ajoutées (${traités} analysées)`;
@@ -1520,28 +1572,58 @@ function renderBilan() {
     });
 
   if(moisArr.length>=2){
-    const MOIS_NOMS=['','Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
-    h+=`<div class="stitle">ROI par mois — Simple Placé C1</div>
-    <div class="card">
-      <div style="font-size:11px;color:var(--dim);margin-bottom:12px;line-height:1.5">
-        ROI du Simple Placé sur le cheval n°1, mois par mois. Repère les périodes de transition à éviter (🔴 = négatif).
-      </div>
-      ${moisArr.map(m=>{
-        const roi = m.roiSP;
-        const couleur = roi===null?'var(--muted)':roi>5?'var(--green)':roi>0?'var(--gold)':roi>-10?'var(--orange)':'var(--red)';
-        const roiTxt = roi===null?'-':((roi>0?'+':'')+roi.toFixed(1)+'%');
-        const largeur = roi===null?0:Math.min(100,Math.max(5,(roi+30)*1.5)); // -30%→0, +40%→100
-        return `<div style="margin-bottom:10px">
-          <div style="display:flex;justify-content:space-between;margin-bottom:3px;font-size:12px">
-            <span style="font-weight:600">${MOIS_NOMS[m.mois]} ${m.annee}<span style="color:var(--muted);font-weight:400"> · ${m.courses} c.</span></span>
-            <span style="font-family:var(--mono);font-weight:700;color:${couleur}">${roiTxt} <span style="color:var(--muted);font-weight:400">(${m.tauxSP}%)</span></span>
-          </div>
-          <div class="pbar" style="height:7px"><div class="pbar-fill" style="width:${largeur}%;background:${couleur}"></div></div>
-        </div>`;
-      }).join('')}
-      <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">
-        💡 Mars et octobre = périodes de transition (fin de meeting, chevaux fatigués). À surveiller.
-      </div>
+    const MOIS_NOMS=['','J','F','M','A','M','J','J','A','S','O','N','D'];
+    // Regroupe par année
+    const parAnnee = {};
+    moisArr.forEach(m=>{
+      if(!parAnnee[m.annee]) parAnnee[m.annee]={};
+      parAnnee[m.annee][m.mois]=m;
+    });
+    const couleurROI = roi => roi===null?'var(--muted)':roi>3?'var(--green)':roi>=0?'var(--orange)':'var(--red)';
+
+    h+=`<div class="stitle">ROI par mois — Simple Placé C1</div>`;
+
+    Object.keys(parAnnee).sort().forEach(annee=>{
+      const moisAn = parAnnee[annee];
+      // Hauteur de barre : ROI de -25% à +25% mappé sur 0-100% de hauteur, 0% au milieu
+      h+=`<div class="card" style="padding:14px 12px">
+        <div style="font-family:var(--serif);font-size:17px;font-weight:700;color:var(--gold);margin-bottom:14px">${annee}</div>
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;height:120px;gap:3px;border-bottom:2px solid var(--border);position:relative">
+          <div style="position:absolute;left:0;right:0;top:50%;height:1px;background:var(--border);opacity:.5"></div>
+          ${[1,2,3,4,5,6,7,8,9,10,11,12].map(mois=>{
+            const m = moisAn[mois];
+            if(!m || m.roiSP===null){
+              return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
+                <div style="font-size:9px;color:var(--muted);opacity:.4">${MOIS_NOMS[mois]}</div>
+              </div>`;
+            }
+            const roi = m.roiSP;
+            const couleur = couleurROI(roi);
+            // Barre : ROI clampé entre -25 et +25, hauteur proportionnelle depuis le milieu
+            const clamped = Math.max(-25, Math.min(25, roi));
+            const hauteurPct = Math.abs(clamped)/25*48; // max 48% de la hauteur (au-dessus ou en-dessous du milieu)
+            const positif = roi>=0;
+            return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;height:100%;position:relative">
+              <div style="position:absolute;bottom:50%;width:100%;display:flex;flex-direction:column;align-items:center;${positif?'':'transform:translateY(100%)'}">
+                ${positif?`<div style="font-size:8px;font-family:var(--mono);color:${couleur};font-weight:700;margin-bottom:1px">${roi>0?'+':''}${Math.round(roi)}</div>`:''}
+                <div style="width:70%;background:${couleur};border-radius:2px;height:${hauteurPct}px;min-height:3px"></div>
+                ${!positif?`<div style="font-size:8px;font-family:var(--mono);color:${couleur};font-weight:700;margin-top:1px">${Math.round(roi)}</div>`:''}
+              </div>
+              <div style="position:absolute;bottom:-18px;font-size:9px;color:var(--dim);font-weight:600">${MOIS_NOMS[mois]}</div>
+            </div>`;
+          }).join('')}
+        </div>
+        <div style="height:18px"></div>
+        <div style="display:flex;gap:12px;justify-content:center;margin-top:6px;font-size:9px;color:var(--muted)">
+          <span><span style="color:var(--green)">█</span> &gt;3%</span>
+          <span><span style="color:var(--orange)">█</span> 0–3%</span>
+          <span><span style="color:var(--red)">█</span> négatif</span>
+        </div>
+      </div>`;
+    });
+
+    h+=`<div style="font-size:10px;color:var(--muted);margin:0 0 10px;font-style:italic;padding:0 4px">
+      💡 Mars et octobre = périodes de transition (fin de meeting, chevaux fatigués). Repère les barres rouges récurrentes.
     </div>`;
   }
 
@@ -1644,8 +1726,19 @@ function renderBilan() {
     });
   }
 
-  h+=`<button class="btn btn-ghost" style="margin-top:8px;margin-bottom:80px" onclick="if(confirm('Effacer tout?')){localStorage.removeItem('${DB}');renderBilan();toast('Effacé')}">Effacer l'historique</button>`;
+  h+=`<button class="btn btn-ghost" style="margin-top:8px;margin-bottom:80px" onclick="effacerHistorique()">Effacer l'historique</button>`;
   el.innerHTML=h;
+}
+
+function effacerHistorique(){
+  if(!confirm('Effacer tout l\'historique ?')) return;
+  DBCACHE = {analyses:[]};
+  // Efface IndexedDB
+  if(idbHandle){ idbWrite(DB, {analyses:[]}).catch(()=>{}); }
+  // Efface aussi localStorage (backup)
+  try{ localStorage.removeItem(DB); }catch{}
+  renderBilan();
+  toast('✅ Historique effacé');
 }
 
 function valArr(id) {
@@ -1674,10 +1767,14 @@ function toast(msg){
 }
 
 // ── INIT ─────────────────────────────────────────────
-const now=new Date();
-document.getElementById('hdr-date').textContent=now.getDate()+' '+MONTHS_S[now.getMonth()];
-document.getElementById('hdr-day').textContent=DAYS[now.getDay()];
-renderCal();
+async function init(){
+  await initDB();  // charge IndexedDB (+ migration localStorage) avant tout
+  const now=new Date();
+  document.getElementById('hdr-date').textContent=now.getDate()+' '+MONTHS_S[now.getMonth()];
+  document.getElementById('hdr-day').textContent=DAYS[now.getDay()];
+  renderCal();
+}
+init();
 </script>
 </body>
 </html>
