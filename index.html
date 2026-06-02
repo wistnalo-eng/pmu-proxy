@@ -1481,6 +1481,70 @@ function renderBilan() {
     </div>`;
   }
 
+  // ── ROI PAR MOIS (identifier les périodes à éviter) ──
+  // Regroupe par mois (toutes années confondues ET par année)
+  const moisData = {}; // "MM/YYYY" -> {courses, sgGagnes, sgGain, spGagnes, spGain}
+  done.forEach(a=>{
+    const m=(a.date||'').match(/\d{1,2}\/(\d{1,2})\/(\d{4})/);
+    if(!m) return;
+    const key=`${m[1].padStart(2,'0')}/${m[2]}`;
+    if(!moisData[key]) moisData[key]={courses:0,spGagnes:0,spGain:0,spMise:0};
+    const md=moisData[key];
+    md.courses++;
+    // Simple Placé (meilleur pari) avec rapport réel
+    md.spMise+=1;
+    if(a.sp_rap!==undefined){
+      if(a.sp_rap){ md.spGain+=a.sp_rap; md.spGagnes++; }
+    } else {
+      // ancien format : approximation via position
+      const arr=(a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
+      const top=(a.top3||[]).map(p=>p.numero);
+      if(top[0]&&arr.slice(0,3).includes(top[0])) md.spGagnes++;
+    }
+  });
+
+  const moisArr = Object.entries(moisData)
+    .map(([k,v])=>({
+      key:k,
+      mois:parseInt(k.split('/')[0]),
+      annee:k.split('/')[1],
+      courses:v.courses,
+      tauxSP: v.spMise>0?Math.round((v.spGagnes/v.spMise)*100):0,
+      roiSP: v.spMise>0?(((v.spGain-v.spMise)/v.spMise)*100):null,
+    }))
+    .filter(m=>m.courses>=5)
+    .sort((a,b)=>{
+      // tri chronologique : année puis mois
+      if(a.annee!==b.annee) return a.annee.localeCompare(b.annee);
+      return a.mois-b.mois;
+    });
+
+  if(moisArr.length>=2){
+    const MOIS_NOMS=['','Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+    h+=`<div class="stitle">ROI par mois — Simple Placé C1</div>
+    <div class="card">
+      <div style="font-size:11px;color:var(--dim);margin-bottom:12px;line-height:1.5">
+        ROI du Simple Placé sur le cheval n°1, mois par mois. Repère les périodes de transition à éviter (🔴 = négatif).
+      </div>
+      ${moisArr.map(m=>{
+        const roi = m.roiSP;
+        const couleur = roi===null?'var(--muted)':roi>5?'var(--green)':roi>0?'var(--gold)':roi>-10?'var(--orange)':'var(--red)';
+        const roiTxt = roi===null?'-':((roi>0?'+':'')+roi.toFixed(1)+'%');
+        const largeur = roi===null?0:Math.min(100,Math.max(5,(roi+30)*1.5)); // -30%→0, +40%→100
+        return `<div style="margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px;font-size:12px">
+            <span style="font-weight:600">${MOIS_NOMS[m.mois]} ${m.annee}<span style="color:var(--muted);font-weight:400"> · ${m.courses} c.</span></span>
+            <span style="font-family:var(--mono);font-weight:700;color:${couleur}">${roiTxt} <span style="color:var(--muted);font-weight:400">(${m.tauxSP}%)</span></span>
+          </div>
+          <div class="pbar" style="height:7px"><div class="pbar-fill" style="width:${largeur}%;background:${couleur}"></div></div>
+        </div>`;
+      }).join('')}
+      <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">
+        💡 Mars et octobre = périodes de transition (fin de meeting, chevaux fatigués). À surveiller.
+      </div>
+    </div>`;
+  }
+
   // ── ANALYSE DE L'IMPORTANCE DES CRITÈRES ──
   // Pour chaque critère : taux de placement (top 3) des chevaux qui le possèdent
   const critStats = {}; // critère -> {placed, total}
