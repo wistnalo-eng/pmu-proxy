@@ -1596,6 +1596,61 @@ function renderBilan() {
     </div>`;
   }
 
+  // ── RÉCAP PAR ANNÉE (diagnostic : courses, taux, cote, ROI) ──
+  const anneeData = {}; // "YYYY" -> stats
+  done.forEach(a=>{
+    const m=(a.date||'').match(/\d{1,2}\/\d{1,2}\/(\d{4})/);
+    if(!m) return;
+    const an=m[1];
+    if(!anneeData[an]) anneeData[an]={courses:0, sgGagnes:0, spJoues:0, spGagnes:0, spGain:0, cpGagnes:0, cpGain:0, cotes:[], rapportsManquants:0};
+    const ad=anneeData[an];
+    ad.courses++;
+    const arr=(a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
+    const top=(a.top3||[]).map(p=>p.numero);
+    if(!arr.length||!top.length) return;
+    const c1=top[0], c2=top[1], arr3=arr.slice(0,3);
+    const cote1=(a.top3||[])[0]?.cote||null;
+    if(cote1) ad.cotes.push(cote1);
+    // Simple Gagnant
+    if(c1===arr[0]) ad.sgGagnes++;
+    // Simple Placé (avec rapport)
+    ad.spJoues++;
+    if(a.sp_rap!==undefined){
+      if(c1&&arr3.includes(c1)){ ad.spGagnes++; if(a.sp_rap) ad.spGain+=a.sp_rap; else ad.rapportsManquants++; }
+    }
+    // Couplé Placé
+    if(a.cp_rap!==undefined && c1&&c2&&arr3.includes(c1)&&arr3.includes(c2)){
+      ad.cpGagnes++; if(a.cp_rap) ad.cpGain+=a.cp_rap;
+    }
+  });
+
+  const annees = Object.keys(anneeData).sort();
+  if(annees.length>=1){
+    h+=`<div class="stitle">Récapitulatif par année</div>
+    <div class="card" style="padding:12px 10px">
+      <div style="display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr 1fr;gap:4px;font-size:10px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:6px;text-align:center">
+        <div style="text-align:left">Année</div><div>Courses</div><div>Tx placé</div><div>Cote moy</div><div>ROI placé</div>
+      </div>
+      ${annees.map(an=>{
+        const ad=anneeData[an];
+        const txPlace = ad.spJoues>0?Math.round((ad.spGagnes/ad.spJoues)*100):0;
+        const coteMoy = ad.cotes.length?(ad.cotes.reduce((a,b)=>a+b,0)/ad.cotes.length).toFixed(2):'-';
+        const roiSP = ad.spJoues>0?(((ad.spGain-ad.spJoues)/ad.spJoues)*100):null;
+        const roiCol = roiSP===null?'var(--muted)':roiSP>3?'var(--green)':roiSP>=0?'var(--orange)':'var(--red)';
+        return `<div style="display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr 1fr;gap:4px;font-size:12px;text-align:center;padding:6px 0;border-bottom:1px solid var(--border)">
+          <div style="text-align:left;font-weight:700;color:var(--gold)">${an}</div>
+          <div style="font-family:var(--mono)">${ad.courses}</div>
+          <div style="font-family:var(--mono)">${txPlace}%</div>
+          <div style="font-family:var(--mono)">${coteMoy}</div>
+          <div style="font-family:var(--mono);font-weight:700;color:${roiCol}">${roiSP===null?'-':((roiSP>0?'+':'')+roiSP.toFixed(1)+'%')}</div>
+        </div>`;
+      }).join('')}
+      <div style="font-size:10px;color:var(--muted);margin-top:8px;font-style:italic">
+        Taux placé & ROI = Simple Placé sur le cheval n°1. Compare les années pour repérer une anomalie (cote, taux, ou données).
+      </div>
+    </div>`;
+  }
+
   // ── ROI PAR MOIS (identifier les périodes à éviter) ──
   // Regroupe par mois (toutes années confondues ET par année)
   const moisData = {}; // "MM/YYYY" -> {courses, sgGagnes, sgGain, spGagnes, spGain}
