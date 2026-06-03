@@ -1245,6 +1245,15 @@ async function lancerBacktest() {
     } catch(e) { /* skip */ }
   }
 
+  // Dédoublonnage de sécurité : garde une seule entrée par date+courseId (la plus récente)
+  const seen = new Set();
+  db.analyses = db.analyses.filter(a=>{
+    const key = a.courseId ? `${a.date}_${a.courseId}` : a.id;
+    if(seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
   if(db.analyses.length>10000) db.analyses=db.analyses.slice(0,10000);
   dbSet(db);
 
