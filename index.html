@@ -1931,6 +1931,46 @@ function renderBilan() {
     });
   }
 
+  // ── AUDIT PAR COURSE (vérification des rapports réels) ──
+  if(done.length && done.length<=30){
+    const auditSorted=[...done].sort((a,b)=>parseDate(a.date)-parseDate(b.date));
+    h+=`<div class="stitle">Audit par course — rapports réels</div>
+    <div class="card" style="padding:10px">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:10px;font-style:italic">Vérification : tes 3 chevaux, l'arrivée, et les rapports PMU réellement utilisés. (Affiché car ≤30 courses)</div>`;
+    auditSorted.forEach(a=>{
+      const arr=(a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
+      const t=(a.top3||[]);
+      const c1=t[0]?.numero, c2=t[1]?.numero, c3=t[2]?.numero;
+      const arr3=arr.slice(0,3);
+      const sgWinner=arr[0];
+      // rapports pour chacun de nos chevaux
+      const lignesCh=[['C1',c1,t[0]?.cote],['C2',c2,t[1]?.cote],['C3',c3,t[2]?.cote]].map(([lab,ch,cote])=>{
+        if(!ch) return '';
+        const gagne=ch===sgWinner;
+        const place=arr3.includes(ch);
+        const sgR=gagne?lireRapport(a,'SIMPLE_GAGNANT',String(ch)):null;
+        const spR=place?lireRapport(a,'SIMPLE_PLACE',String(ch)):null;
+        let badge='';
+        if(gagne) badge=`<span style="color:var(--green);font-weight:700">SG ${sgR?sgR.toFixed(2)+'€':'?'}</span>`;
+        else if(place) badge=`<span style="color:var(--gold)">SP ${spR?spR.toFixed(2)+'€':'?'}</span>`;
+        else badge=`<span style="color:var(--muted)">—</span>`;
+        return `<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0">
+          <span><b>${lab}</b> n°${ch} <span style="color:var(--muted)">(cote ${cote||'?'})</span></span>
+          ${badge}
+        </div>`;
+      }).join('');
+      h+=`<div style="border-bottom:1px solid var(--border);padding:8px 0">
+        <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:4px">
+          <span>${a.course||a.courseId}</span>
+          <span style="color:var(--muted);font-size:10px">${a.date}</span>
+        </div>
+        <div style="font-size:11px;color:var(--blue);font-family:var(--mono);margin-bottom:4px">Arrivée : ${arr.slice(0,5).join('-')}</div>
+        ${lignesCh}
+      </div>`;
+    });
+    h+=`</div>`;
+  }
+
   // Historique complet
   if(done.length){
     h+=`<div class="stitle">Historique des résultats</div>`;
