@@ -740,7 +740,7 @@ function scoreE2(p, course) {
     const clean=musique.replace(/\(\d+\)/g,'');
     const f=clean.trim()[0];
     const debutSansD=!clean.slice(0,6).toUpperCase().includes('D');
-    if(f==='1'&&debutSansD) pts.push({l:'Musique régulière (1er récent, sans D)',p:1,w:1});
+    if(f==='1'&&debutSansD) pts.push({l:'Musique régulière (1er récent, sans D)',p:1,w:1,q:0.38});
   }
 
   // 3. Driver attitré — BRUIT (23%) → w=0
@@ -751,12 +751,12 @@ function scoreE2(p, course) {
   const TOP_DRV_Y = getTopDrivers(year);
   const TOP_CUM_Y = getCumulards(year);
   const TOP_TRAINERS_Y = getTopTrainers(year);
-  if(TOP_DRV_Y.some(d=>driver.includes(d))) pts.push({l:`Driver top LeTrot (${p.driver})`,p:1,w:1});
+  if(TOP_DRV_Y.some(d=>driver.includes(d))) pts.push({l:`Driver top LeTrot (${p.driver})`,p:1,w:1,q:0.31});
 
   // 5. Cumulard top 6 — FORT (36%) → w=3
   const isCum=TOP_CUM_Y.some(c=>driver.includes(c)||entr.includes(c));
   const dEq=driver&&entr&&(driver.split(/[\s.]+/).some(w=>w.length>3&&entr.includes(w))||entr.split(/[\s.]+/).some(w=>w.length>3&&driver.includes(w)));
-  if(isCum&&dEq) pts.push({l:'Cumulard top 6 (entr=driver)',p:1,w:1});
+  if(isCum&&dEq) pts.push({l:'Cumulard top 6 (entr=driver)',p:1,w:1,q:0.36});
 
   // 6. Déferré 4 pattes — BRUIT (26%) → w=0
   if(deferre.includes('ANTERIEURS_POSTERIEURS')) pts.push({l:'Déferré 4 pattes (gain vitesse)',p:1,w:0});
@@ -773,27 +773,27 @@ function scoreE2(p, course) {
   }
 
   // 9. Favori du marché — TRÈS FORT (57%) → w=3
-  if(favori) pts.push({l:`Favori du marché (${cote}€)`,p:1,w:1});
+  if(favori) pts.push({l:`Favori du marché (${cote}€)`,p:1,w:1,q:0.57});
 
   // 10. Avis entraîneur — POSITIF FORT (38%) → w=3 / négatif pénalise
-  if(avis==='POSITIF') pts.push({l:'Avis entraîneur POSITIF',p:1,w:1});
+  if(avis==='POSITIF') pts.push({l:'Avis entraîneur POSITIF',p:1,w:1,q:0.38});
   else if(avis==='NEGATIF') pts.push({l:'Avis entraîneur négatif',p:-1,w:-1});
 
   // 11. Excellent chrono — BON (30%) → w=2
   if(rk>0 && rk<=130000){
     const sec=Math.floor(rk/1000);
     const dixiemes=Math.round((rk%1000)/100);
-    if(rk<=113000) pts.push({l:`Excellent chrono (1'${String(sec-60).padStart(2,'0')}"${dixiemes})`,p:1,w:1});
+    if(rk<=113000) pts.push({l:`Excellent chrono (1'${String(sec-60).padStart(2,'0')}"${dixiemes})`,p:1,w:1,q:0.30});
   }
 
   // 12. Vraie Musique top 3 — BON (34%) → w=2
-  if(p.vmRank&&p.vmRank<=3) pts.push({l:`Vraie Musique top 3 (indice ${p.vmIndice})`,p:1,w:1});
+  if(p.vmRank&&p.vmRank<=3) pts.push({l:`Vraie Musique top 3 (indice ${p.vmIndice})`,p:1,w:1,q:0.34});
 
   // 13. Tangent au plafond — BRUIT (échantillon faible) → w=0
   if(gains>0&&allocJ>0){const diff=(allocJ-gains)/allocJ;if(diff>=0&&diff<=0.05)pts.push({l:'Tangent au plafond',p:1,w:0});}
 
   // 14. Bon ratio victoires — MOYEN (28%) → w=1
-  if(nbCourses>=10 && nbVict>=3){const tauxV=nbVict/nbCourses;if(tauxV>=0.15)pts.push({l:`Bon ratio victoires (${Math.round(tauxV*100)}%)`,p:1,w:1});}
+  if(nbCourses>=10 && nbVict>=3){const tauxV=nbVict/nbCourses;if(tauxV>=0.15)pts.push({l:`Bon ratio victoires (${Math.round(tauxV*100)}%)`,p:1,w:1,q:0.28});}
 
   // 15. Cheval déclassé — BRUIT (25%) → w=0
   let allocPrec=parseFloat(p.allocPrec)||0;
@@ -819,12 +819,14 @@ function scoreE2(p, course) {
 
   // 17. Domine la hiérarchie — BON (34%) → w=2
   if(p.domHierarchie && p.nbConfront>0){
-    pts.push({l:`Domine la hiérarchie (${p.nbConfront} confrontations)`,p:1,w:1});
+    pts.push({l:`Domine la hiérarchie (${p.nbConfront} confrontations)`,p:1,w:1,q:0.34});
   }
 
   // TOTAL = somme des poids pondérés (w), pas un simple comptage
   const totalPondere = pts.reduce((s,x)=> s + (x.w!==undefined ? x.w : x.p), 0);
-  return {pts, total: Math.max(0, totalPondere)};
+  // Score de finesse : somme des prédictivités (%) des critères positifs — sert à départager les ex æquo
+  const scoreFin = pts.reduce((s,x)=> s + ((x.p>0 && x.q) ? x.q : 0), 0);
+  return {pts, total: Math.max(0, totalPondere), scoreFin};
 }
 
 // ══════════════════════════════════════════════════════
@@ -930,10 +932,8 @@ async function lancerScan2() {
         return {...pvm,...r};
       }).sort((a,b)=>{
         if(b.total!==a.total) return b.total-a.total;
-        // Départage 1 : cote la plus basse (favori du marché) en premier
-        const ca=parseFloat(a.dernierRapportReference?.rapport||a.dernierRapportDirect?.rapport||99);
-        const cb=parseFloat(b.dernierRapportReference?.rapport||b.dernierRapportDirect?.rapport||99);
-        if(ca!==cb) return ca-cb;
+        // Départage 1 : qualité des critères (somme des prédictivités) — le plus prédictif passe devant
+        if((b.scoreFin||0)!==(a.scoreFin||0)) return (b.scoreFin||0)-(a.scoreFin||0);
         // Départage 2 : numéro (garantit un ordre 100% déterministe)
         return (a.numPmu||a.numero||0)-(b.numPmu||b.numero||0);
       });
@@ -1157,10 +1157,8 @@ async function lancerBacktest() {
           return {...pvm,...r};
         }).sort((a,b)=>{
           if(b.total!==a.total) return b.total-a.total;
-          // Départage 1 : cote la plus basse (favori du marché) en premier
-          const ca=parseFloat(a.dernierRapportReference?.rapport||a.dernierRapportDirect?.rapport||99);
-          const cb=parseFloat(b.dernierRapportReference?.rapport||b.dernierRapportDirect?.rapport||99);
-          if(ca!==cb) return ca-cb;
+          // Départage 1 : qualité des critères (somme des prédictivités) — le plus prédictif passe devant
+          if((b.scoreFin||0)!==(a.scoreFin||0)) return (b.scoreFin||0)-(a.scoreFin||0);
           // Départage 2 : numéro (ordre 100% déterministe)
           return (a.numPmu||a.numero||0)-(b.numPmu||b.numero||0);
         });
