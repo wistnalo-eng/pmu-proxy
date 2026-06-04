@@ -928,7 +928,15 @@ async function lancerScan2() {
         const pvm={...p,nom,vmRank:vm?.rank,vmIndice:vm?.indice,allocPrec,domHierarchie,nbConfront:domDirect[(nom||'').toUpperCase()]||0};
         const r=scoreE2(pvm,course);
         return {...pvm,...r};
-      }).sort((a,b)=>b.total-a.total);
+      }).sort((a,b)=>{
+        if(b.total!==a.total) return b.total-a.total;
+        // Départage 1 : cote la plus basse (favori du marché) en premier
+        const ca=parseFloat(a.dernierRapportReference?.rapport||a.dernierRapportDirect?.rapport||99);
+        const cb=parseFloat(b.dernierRapportReference?.rapport||b.dernierRapportDirect?.rapport||99);
+        if(ca!==cb) return ca-cb;
+        // Départage 2 : numéro (garantit un ordre 100% déterministe)
+        return (a.numPmu||a.numero||0)-(b.numPmu||b.numero||0);
+      });
 
       S.e2Results.push({course,scored});
 
@@ -1147,7 +1155,15 @@ async function lancerBacktest() {
           const pvm={...p,vmRank:vm?.rank,vmIndice:vm?.indice,allocPrec,domHierarchie,nbConfront:domDirect[nomUp]||0};
           const r=scoreE2(pvm,c);
           return {...pvm,...r};
-        }).sort((a,b)=>b.total-a.total);
+        }).sort((a,b)=>{
+          if(b.total!==a.total) return b.total-a.total;
+          // Départage 1 : cote la plus basse (favori du marché) en premier
+          const ca=parseFloat(a.dernierRapportReference?.rapport||a.dernierRapportDirect?.rapport||99);
+          const cb=parseFloat(b.dernierRapportReference?.rapport||b.dernierRapportDirect?.rapport||99);
+          if(ca!==cb) return ca-cb;
+          // Départage 2 : numéro (ordre 100% déterministe)
+          return (a.numPmu||a.numero||0)-(b.numPmu||b.numero||0);
+        });
 
         const top3 = scored.slice(0,3).map(p=>({
           numero:p.numPmu, nom:p.nom, score:p.total,
