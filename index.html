@@ -294,6 +294,8 @@ const S = {
   scoredCourses: [],    // Courses scorées par E1
   checkedIds: new Set(),// IDs des courses cochées
   e2Results: [],        // Résultats E2 par course
+  detailAnnee: 'Tous',  // filtre année du tableau détaillé
+  dutchSeuil: 0,        // seuil de cote C1 pour le dutching (0 = pas de filtre)
 };
 
 // ══════════════════════════════════════════════════════
@@ -1152,68 +1154,19 @@ async function lancerBacktest() {
           cote: parseFloat(p.dernierRapportReference?.rapport || p.dernierRapportDirect?.rapport || 0) || null
         }));
 
-        // ── PRÉ-CALCUL DES RAPPORTS (Option A — stockage minimal) ──
-        const getRap = (raps, typePari, combinaison) => {
+        // ── STOCKAGE COMPACT DES RAPPORTS (IndexedDB a la place) ──
+        // On garde tous les rapports utiles → permet de calculer n'importe quelle stat
+        const extractRapports = (raps) => {
           if(!raps) return null;
           const blocs = Array.isArray(raps) ? raps : (raps.rapportsDefinitifs||[]);
-          const b = blocs.find(x=>x.typePari===typePari);
-          if(!b) return null;
-          const cible = String(combinaison).trim().toLowerCase();
-          const r = (b.rapports||[]).find(x=>String(x.combinaison||'').trim().toLowerCase()===cible);
-          return r ? (parseFloat(r.dividendePourUnEuro)||0)/100 : null;
+          const utiles = ['SIMPLE_GAGNANT','SIMPLE_PLACE','COUPLE_GAGNANT','COUPLE_PLACE','DEUX_SUR_QUATRE'];
+          return blocs.filter(b=>utiles.includes(b.typePari)).map(b=>({
+            t:b.typePari,
+            r:(b.rapports||[]).map(r=>({c:String(r.combinaison||''), d:parseFloat(r.dividendePourUnEuro)||0}))
+          }));
         };
 
-        const arr = c.arrivee; // tableau de numéros
-        const n1 = top3[0]?.numero, n2 = top3[1]?.numero, n3 = top3[2]?.numero;
-        const arr3 = arr.slice(0,3), arr4 = arr.slice(0,4);
-
-        // SG : rapport du gagnant réel (si notre C1 a gagné)
-        let sg_rap = null;
-        if(n1 && arr[0]===n1) sg_rap = getRap(c.rapports,'SIMPLE_GAGNANT',String(n1));
-
-        // SP : rapport du placé C1 (si dans top 3)
-        let sp_rap = null;
-        if(n1 && arr3.includes(n1)) sp_rap = getRap(c.rapports,'SIMPLE_PLACE',String(n1));
-
-        // CG : couplé gagnant 1+2 (ordre exact)
-        let cg_rap = null;
-        if(n1 && n2 && arr[0]===n1 && arr[1]===n2){
-          const variantes = [`${n1}-${n2}`,`${n2}-${n1}`];
-          for(const v of variantes){ cg_rap = getRap(c.rapports,'COUPLE_GAGNANT',v); if(cg_rap) break; }
-        }
-
-        // CP : couplé placé 1+2 (les deux dans top 3)
-        let cp_rap = null;
-        if(n1 && n2 && arr3.includes(n1) && arr3.includes(n2)){
-          const variantes = [[n1,n2]].map(p=>[...p].sort((a,b)=>a-b).join('-'));
-          for(const v of variantes){ cp_rap = getRap(c.rapports,'COUPLE_PLACE',v); if(cp_rap) break; }
-          if(!cp_rap){ // essaie les deux ordres
-            cp_rap = getRap(c.rapports,'COUPLE_PLACE',`${n1}-${n2}`) || getRap(c.rapports,'COUPLE_PLACE',`${n2}-${n1}`);
-          }
-        }
-
-        // 2SUR4 : une de nos paires dans les 4 premiers
-        let s4_rap = null, s4_eligible = false;
-        if(n1 && n2 && n3 && c.rapports){
-          const blocs = Array.isArray(c.rapports) ? c.rapports : (c.rapports.rapportsDefinitifs||[]);
-          const bloc2s4 = blocs.find(b=>b.typePari==='DEUX_SUR_QUATRE');
-          if(bloc2s4){
-            s4_eligible = true;
-            let gainS4 = 0;
-            const nosPaires = [[n1,n2],[n1,n3],[n2,n3]];
-            for(const paire of nosPaires){
-              const pNorm = [...paire].sort((a,b)=>a-b).join('-');
-              for(const r of (bloc2s4.rapports||[])){
-                const cmb = String(r.combinaison||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n)).sort((a,b)=>a-b).join('-');
-                if(cmb===pNorm){ gainS4 += (parseFloat(r.dividendePourUnEuro)||0)/100; break; }
-              }
-            }
-            if(gainS4>0) s4_rap = gainS4;
-          }
-        }
-
-        // Évite les doublons
-        // Remplace l'ancienne version si elle existe (permet de re-backtester avec nouvelle logique)
+        // Évite les doublons / remplace l'ancienne version
         const existsIdx = db.analyses.findIndex(a=>a.date===dateFR && a.courseId===c.id);
         if(existsIdx>=0) db.analyses.splice(existsIdx,1);
 
@@ -1224,18 +1177,12 @@ async function lancerBacktest() {
           course:c.nom||c.hippodrome,
           hippodrome:c.hippodrome,
           isQuinte:c.isQuinte,
-          top3,
+          top3,  // contient numero + cote de C1, C2, C3
           chevaux:scored.map(p=>({
             numero:p.numPmu,
             criteres:p.pts.filter(x=>x.p>0).map(x=>x.l.split(' (')[0])
           })),
-          // 5 valeurs pré-calculées (ultra-compact, ~50 octets vs 3-5KB)
-          sg_rap,   // rapport SG réel si C1 gagne, sinon null
-          sp_rap,   // rapport SP réel si C1 placé, sinon null
-          cg_rap,   // rapport CG réel si 1+2 dans l'ordre, sinon null
-          cp_rap,   // rapport CP réel si 1+2 placés, sinon null
-          s4_rap,   // rapport(s) 2sur4 si une paire gagnante, sinon null
-          s4_eligible, // true si le pari 2sur4 existait pour cette course
+          raps: extractRapports(c.rapports),  // rapports compacts (format {t, r:[{c,d}]})
           arrivee:c.arrivee.join('-'),
           statut:'complete',
           backtest:true,
@@ -1286,29 +1233,69 @@ function renderBilan() {
   const ecartsG=[];
   // ROI Simple Gagnant sur cheval n°1 (mise 1€ par course)
   let cotesN1=[], cotesGagnantes=[], gainTotal=0, miseTotal=0;
-  // ROI multi-paris
+  // ROI multi-paris (C1 / 1+2 — vue principale)
   const roiData = {
-    sg:    {mise:0, gain:0, gagnes:0, joues:0}, // Simple Gagnant C1
-    sp:    {mise:0, gain:0, gagnes:0, joues:0}, // Simple Placé C1
-    cg12:  {mise:0, gain:0, gagnes:0, joues:0}, // Couplé Gagnant 1+2
-    cp12:  {mise:0, gain:0, gagnes:0, joues:0}, // Couplé Placé 1+2
-    s4:    {mise:0, gain:0, gagnes:0, joues:0}, // 2sur4 1+2+3
+    sg:    {mise:0, gain:0, gagnes:0, joues:0},
+    sp:    {mise:0, gain:0, gagnes:0, joues:0},
+    cg12:  {mise:0, gain:0, gagnes:0, joues:0},
+    cp12:  {mise:0, gain:0, gagnes:0, joues:0},
+    s4:    {mise:0, gain:0, gagnes:0, joues:0},
   };
 
-  // Helper : extrait un rapport PMU par type de pari et combinaison
+  // Dutching SG : structure par seuil de cote C1 (0=tout, 3, 4, 5)
+  const dutch = {0:{courses:0,mise:0,gain:0,gagnes:0,cotesGag:[]}, 3:{courses:0,mise:0,gain:0,gagnes:0,cotesGag:[]}, 4:{courses:0,mise:0,gain:0,gagnes:0,cotesGag:[]}, 5:{courses:0,mise:0,gain:0,gagnes:0,cotesGag:[]}};
+
+  // Lecteur universel : lit un rapport (pour 1€) quel que soit le format stocké
+  const lireRapport = (a, typePari, combinaison) => {
+    let blocs = null;
+    if(a.raps){ // nouveau format compact {t, r:[{c,d}]}
+      const b = a.raps.find(x=>x.t===typePari);
+      if(!b) return null;
+      const cible = String(combinaison).replace(/\s/g,'').toLowerCase();
+      const r = (b.r||[]).find(x=>String(x.c||'').replace(/\s/g,'').toLowerCase()===cible);
+      return r ? (parseFloat(r.d)||0)/100 : null;
+    }
+    if(a.rapports){ // ancien format
+      return getRapport(a.rapports, typePari, combinaison);
+    }
+    return null;
+  };
+  // Variante qui teste les ordres de combinaison (couplé/2sur4)
+  const lireRapportV = (a, typePari, nums) => {
+    const variantes = [nums.join('-'), [...nums].reverse().join('-'), [...nums].sort((x,y)=>x-y).join('-'), [...nums].sort((x,y)=>y-x).join('-')];
+    for(const v of variantes){ const r=lireRapport(a,typePari,v); if(r!==null) return r; }
+    return null;
+  };
+  // Récupère le bloc de rapports d'un type (pour 2sur4 : toutes les paires)
+  const lireBloc = (a, typePari) => {
+    if(a.raps){ const b=a.raps.find(x=>x.t===typePari); return b ? b.r.map(x=>({combinaison:x.c, dividendePourUnEuro:x.d})) : null; }
+    if(a.rapports){ const blocs=Array.isArray(a.rapports)?a.rapports:(a.rapports.rapportsDefinitifs||[]); const b=blocs.find(x=>x.typePari===typePari); return b?b.rapports:null; }
+    return null;
+  };
+
+  // ── STATS DÉTAILLÉES PAR CHEVAL/COMBINAISON, PAR ANNÉE ──
+  // structure: detail[annee][pari] = {joues, gagnes, gain, cotesGag:[]}
+  const detail = {};
+  const ensureDetail = (an) => {
+    if(!detail[an]) detail[an] = {
+      sg1:{j:0,g:0,gain:0,cg:[]}, sg2:{j:0,g:0,gain:0,cg:[]}, sg3:{j:0,g:0,gain:0,cg:[]},
+      sp1:{j:0,g:0,gain:0,cg:[]}, sp2:{j:0,g:0,gain:0,cg:[]}, sp3:{j:0,g:0,gain:0,cg:[]},
+      cg12:{j:0,g:0,gain:0,cg:[]}, cg13:{j:0,g:0,gain:0,cg:[]}, cg23:{j:0,g:0,gain:0,cg:[]},
+      cp12:{j:0,g:0,gain:0,cg:[]}, cp13:{j:0,g:0,gain:0,cg:[]}, cp23:{j:0,g:0,gain:0,cg:[]},
+    };
+    return detail[an];
+  };
+
+  // Helper : extrait un rapport PMU par type de pari et combinaison (ancien format)
   const getRapport = (rapports, typePari, combinaison) => {
     if(!rapports) return null;
-    // Les rapports sont un tableau direct [{typePari, rapports:[...]}]
     const blocs = Array.isArray(rapports) ? rapports : (rapports.rapportsDefinitifs || []);
     for(const b of blocs){
       if(b.typePari === typePari){
         for(const r of (b.rapports || [])){
           const cmb = String(r.combinaison || '').replace(/\s/g,'').toLowerCase();
           const cible = String(combinaison).replace(/\s/g,'').toLowerCase();
-          if(cmb === cible){
-            // dividendePourUnEuro est en centimes (370 = 3.70€)
-            return (parseFloat(r.dividendePourUnEuro) || 0) / 100;
-          }
+          if(cmb === cible) return (parseFloat(r.dividendePourUnEuro) || 0) / 100;
         }
       }
     }
@@ -1359,50 +1346,89 @@ function renderBilan() {
     if(c2&&c2===arr[0]) stats.sg2++;
     if(c3&&c3===arr[0]) stats.sg3++;
 
-    // ROI sur cheval n°1 — RAPPORT RÉEL PMU UNIQUEMENT (cohérent avec multi-paris)
+    // ROI sur cheval n°1 — RAPPORT RÉEL PMU (lecteur universel)
     let rapportReel1 = null;
-    if(a.sg_rap !== undefined){
-      // Format pré-calculé (Option A) : sg_rap = rapport réel si C1 a gagné, sinon null
-      rapportReel1 = a.sg_rap;
-    } else if(a.rapports && gagne1){
-      // Ancien format : cherche le rapport SG brut
-      const blocs = Array.isArray(a.rapports) ? a.rapports : (a.rapports.rapportsDefinitifs||[]);
-      const blocSG = blocs.find(b=>b.typePari==='SIMPLE_GAGNANT');
-      if(blocSG){
-        const r = (blocSG.rapports||[]).find(x=>String(x.combinaison)===String(c1));
-        if(r) rapportReel1 = (parseFloat(r.dividendePourUnEuro)||0)/100;
-      }
-    }
+    if(gagne1) rapportReel1 = lireRapport(a,'SIMPLE_GAGNANT',String(c1));
     // Mise comptée sur toutes les courses ; gain = rapport réel (0 si manquant)
-    if(cote1&&cote1>0) cotesN1.push(cote1); // cote moyenne = cote de référence (info profil)
+    if(cote1&&cote1>0) cotesN1.push(cote1);
     miseTotal+=1;
     if(gagne1 && rapportReel1!==null && rapportReel1>0){
       gainTotal+=rapportReel1;
       cotesGagnantes.push(rapportReel1);
     }
 
-    // ── ROI MULTI-PARIS — valeurs pré-calculées (Option A) ou ancien format ──
-    const hasPreCalc = a.sg_rap !== undefined || a.s4_eligible !== undefined;
-    if(hasPreCalc){
-      // Nouveau format compact
-      roiData.sg.joues++; roiData.sg.mise+=1;
-      if(a.sg_rap){ roiData.sg.gain+=a.sg_rap; roiData.sg.gagnes++; }
-      roiData.sp.joues++; roiData.sp.mise+=1;
-      if(a.sp_rap){ roiData.sp.gain+=a.sp_rap; roiData.sp.gagnes++; }
+    // ── ROI MULTI-PARIS (vue principale : C1 / 1+2) ──
+    roiData.sg.joues++; roiData.sg.mise+=1;
+    if(gagne1){ const r=lireRapport(a,'SIMPLE_GAGNANT',String(c1)); if(r){ roiData.sg.gain+=r; roiData.sg.gagnes++; } }
+    roiData.sp.joues++; roiData.sp.mise+=1;
+    if(arr3.includes(c1)){ const r=lireRapport(a,'SIMPLE_PLACE',String(c1)); if(r){ roiData.sp.gain+=r; roiData.sp.gagnes++; } }
+    if(c2){
       roiData.cg12.joues++; roiData.cg12.mise+=1;
-      if(a.cg_rap){ roiData.cg12.gain+=a.cg_rap; roiData.cg12.gagnes++; }
+      if(arr[0]===c1&&arr[1]===c2){ const r=lireRapportV(a,'COUPLE_GAGNANT',[c1,c2]); if(r){ roiData.cg12.gain+=r; roiData.cg12.gagnes++; } }
       roiData.cp12.joues++; roiData.cp12.mise+=1;
-      if(a.cp_rap){ roiData.cp12.gain+=a.cp_rap; roiData.cp12.gagnes++; }
-      if(a.s4_eligible){ roiData.s4.joues++; roiData.s4.mise+=3; if(a.s4_rap){ roiData.s4.gain+=a.s4_rap; roiData.s4.gagnes++; } }
-    } else if(a.rapports){
-      // Ancien format (rétrocompatibilité)
-      const rap = a.rapports;
-      const fR = (type,comb) => { const blocs=Array.isArray(rap)?rap:(rap.rapportsDefinitifs||[]); const b=blocs.find(x=>x.typePari===type); if(!b) return null; const c=String(comb).toLowerCase(); const r=(b.rapports||[]).find(x=>String(x.combinaison||'').toLowerCase()===c); return r?(parseFloat(r.dividendePourUnEuro)||0)/100:null; };
-      const fRV = (type,nums) => { for(const v of [nums.join('-'),[...nums].reverse().join('-'),[...nums].sort((a,b)=>a-b).join('-')]){ const r=fR(type,v); if(r) return r; } return null; };
-      roiData.sg.joues++; roiData.sg.mise+=1; if(gagne1){ const r=fR('SIMPLE_GAGNANT',String(c1)); if(r){ roiData.sg.gain+=r; roiData.sg.gagnes++; } }
-      roiData.sp.joues++; roiData.sp.mise+=1; if(arr3.includes(c1)){ const r=fR('SIMPLE_PLACE',String(c1)); if(r){ roiData.sp.gain+=r; roiData.sp.gagnes++; } }
-      if(c2){ roiData.cg12.joues++; roiData.cg12.mise+=1; if(arr[0]===c1&&arr[1]===c2){ const r=fRV('COUPLE_GAGNANT',[c1,c2]); if(r){ roiData.cg12.gain+=r; roiData.cg12.gagnes++; } } roiData.cp12.joues++; roiData.cp12.mise+=1; if(arr3.includes(c1)&&arr3.includes(c2)){ const r=fRV('COUPLE_PLACE',[c1,c2]); if(r){ roiData.cp12.gain+=r; roiData.cp12.gagnes++; } } }
-      if(c2&&c3){ const blocs=Array.isArray(rap)?rap:(rap.rapportsDefinitifs||[]); const b2s4=blocs.find(x=>x.typePari==='DEUX_SUR_QUATRE'); if(b2s4){ roiData.s4.joues++; roiData.s4.mise+=3; let g=0; [[c1,c2],[c1,c3],[c2,c3]].forEach(p=>{ const pN=[...p].sort((a,b)=>a-b).join('-'); (b2s4.rapports||[]).forEach(r=>{ const cm=String(r.combinaison||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n)).sort((a,b)=>a-b).join('-'); if(cm===pN) g+=(parseFloat(r.dividendePourUnEuro)||0)/100; }); }); if(g>0){ roiData.s4.gain+=g; roiData.s4.gagnes++; } } }
+      if(arr3.includes(c1)&&arr3.includes(c2)){ const r=lireRapportV(a,'COUPLE_PLACE',[c1,c2]); if(r){ roiData.cp12.gain+=r; roiData.cp12.gagnes++; } }
+    }
+    if(c2&&c3){
+      const b2s4 = lireBloc(a,'DEUX_SUR_QUATRE');
+      if(b2s4){
+        roiData.s4.joues++; roiData.s4.mise+=3;
+        let g=0;
+        [[c1,c2],[c1,c3],[c2,c3]].forEach(p=>{
+          const pN=[...p].sort((a,b)=>a-b).join('-');
+          b2s4.forEach(r=>{ const cm=String(r.combinaison||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n)).sort((a,b)=>a-b).join('-'); if(cm===pN) g+=(parseFloat(r.dividendePourUnEuro)||0)/100; });
+        });
+        if(g>0){ roiData.s4.gain+=g; roiData.s4.gagnes++; }
+      }
+    }
+
+    // ── DÉTAIL PAR CHEVAL/COMBINAISON ET PAR ANNÉE ──
+    const my=(a.date||'').match(/\d{1,2}\/\d{1,2}\/(\d{4})/);
+    if(my && a.raps){ // détail dispo seulement pour le nouveau format
+      const an=my[1];
+      const D=ensureDetail(an);
+      const cotes=[(a.top3||[])[0]?.cote, (a.top3||[])[1]?.cote, (a.top3||[])[2]?.cote];
+      const chevaux=[c1,c2,c3];
+      // SG par cheval
+      ['sg1','sg2','sg3'].forEach((k,i)=>{
+        const ch=chevaux[i]; if(!ch) return;
+        D[k].j++;
+        if(ch===arr[0]){ const r=lireRapport(a,'SIMPLE_GAGNANT',String(ch)); if(r){ D[k].g++; D[k].gain+=r; D[k].cg.push(cotes[i]||r); } }
+      });
+      // SP par cheval
+      ['sp1','sp2','sp3'].forEach((k,i)=>{
+        const ch=chevaux[i]; if(!ch) return;
+        D[k].j++;
+        if(arr3.includes(ch)){ const r=lireRapport(a,'SIMPLE_PLACE',String(ch)); if(r){ D[k].g++; D[k].gain+=r; D[k].cg.push(cotes[i]||r); } }
+      });
+      // Couplé Gagnant par combinaison
+      [['cg12',c1,c2],['cg13',c1,c3],['cg23',c2,c3]].forEach(([k,a1,a2])=>{
+        if(!a1||!a2) return;
+        D[k].j++;
+        if(arr[0]===a1&&arr[1]===a2 || arr[0]===a2&&arr[1]===a1){ const r=lireRapportV(a,'COUPLE_GAGNANT',[a1,a2]); if(r){ D[k].g++; D[k].gain+=r; D[k].cg.push(r); } }
+      });
+      // Couplé Placé par combinaison
+      [['cp12',c1,c2],['cp13',c1,c3],['cp23',c2,c3]].forEach(([k,a1,a2])=>{
+        if(!a1||!a2) return;
+        D[k].j++;
+        if(arr3.includes(a1)&&arr3.includes(a2)){ const r=lireRapportV(a,'COUPLE_PLACE',[a1,a2]); if(r){ D[k].g++; D[k].gain+=r; D[k].cg.push(r); } }
+      });
+    }
+
+    // ── DUTCHING SG : jouer C1+C2+C3, mise 3€, un seul rembourse ──
+    // On accumule par seuil de cote C1 (0=tout, 3, 4, 5) pour trouver le seuil rentable
+    if(c1 && c2 && c3){
+      const coteC1 = (a.top3||[])[0]?.cote || 0;
+      let gagnantRap = 0, unGagne=false;
+      if(arr[0]===c1){ const r=lireRapport(a,'SIMPLE_GAGNANT',String(c1)); if(r){ gagnantRap=r; unGagne=true; } }
+      else if(arr[0]===c2){ const r=lireRapport(a,'SIMPLE_GAGNANT',String(c2)); if(r){ gagnantRap=r; unGagne=true; } }
+      else if(arr[0]===c3){ const r=lireRapport(a,'SIMPLE_GAGNANT',String(c3)); if(r){ gagnantRap=r; unGagne=true; } }
+      [0,3,4,5].forEach(seuil=>{
+        if(coteC1>=seuil){
+          dutch[seuil].courses++;
+          dutch[seuil].mise+=3;
+          if(unGagne){ dutch[seuil].gagnes++; dutch[seuil].gain+=gagnantRap; dutch[seuil].cotesGag.push(gagnantRap); }
+        }
+      });
     }
 
     // Simple Placé (cheval dans top 3)
@@ -1613,15 +1639,11 @@ function renderBilan() {
     if(cote1) ad.cotes.push(cote1);
     // Simple Gagnant
     if(c1===arr[0]) ad.sgGagnes++;
-    // Simple Placé (avec rapport)
+    // Simple Placé (avec rapport réel)
     ad.spJoues++;
-    if(a.sp_rap!==undefined){
-      if(c1&&arr3.includes(c1)){ ad.spGagnes++; if(a.sp_rap) ad.spGain+=a.sp_rap; else ad.rapportsManquants++; }
-    }
+    if(c1&&arr3.includes(c1)){ const r=lireRapport(a,'SIMPLE_PLACE',String(c1)); if(r){ ad.spGagnes++; ad.spGain+=r; } else ad.rapportsManquants++; }
     // Couplé Placé
-    if(a.cp_rap!==undefined && c1&&c2&&arr3.includes(c1)&&arr3.includes(c2)){
-      ad.cpGagnes++; if(a.cp_rap) ad.cpGain+=a.cp_rap;
-    }
+    if(c1&&c2&&arr3.includes(c1)&&arr3.includes(c2)){ const r=lireRapportV(a,'COUPLE_PLACE',[c1,c2]); if(r){ ad.cpGagnes++; ad.cpGain+=r; } }
   });
 
   const annees = Object.keys(anneeData).sort();
@@ -1651,6 +1673,107 @@ function renderBilan() {
     </div>`;
   }
 
+  // ══════════════════════════════════════════════════════
+  // TABLEAU DÉTAILLÉ PAR CHEVAL / COMBINAISON (filtrable par année)
+  // ══════════════════════════════════════════════════════
+  const anneesDetail = Object.keys(detail).sort();
+  if(anneesDetail.length){
+    // Agrège selon le filtre année sélectionné
+    const filtre = S.detailAnnee;
+    const agg = {};
+    const cles=['sg1','sg2','sg3','sp1','sp2','sp3','cg12','cg13','cg23','cp12','cp13','cp23'];
+    cles.forEach(k=>agg[k]={j:0,g:0,gain:0,cg:[]});
+    anneesDetail.forEach(an=>{
+      if(filtre!=='Tous' && filtre!==an) return;
+      cles.forEach(k=>{
+        const d=detail[an][k];
+        agg[k].j+=d.j; agg[k].g+=d.g; agg[k].gain+=d.gain; agg[k].cg.push(...d.cg);
+      });
+    });
+
+    const ligne = (label, d) => {
+      const taux = d.j>0?Math.round((d.g/d.j)*100):0;
+      const rapMoy = d.g>0?(d.gain/d.g).toFixed(2):'-';
+      const coteMoyG = d.cg.length?(d.cg.reduce((a,b)=>a+b,0)/d.cg.length).toFixed(2):'-';
+      const roi = d.j>0?(((d.gain-d.j)/d.j)*100):null;
+      const roiCol = roi===null?'var(--muted)':roi>3?'var(--green)':roi>=0?'var(--orange)':'var(--red)';
+      return `<div style="display:grid;grid-template-columns:1.1fr 0.8fr 0.9fr 0.9fr 0.9fr;gap:3px;font-size:11px;text-align:center;padding:5px 0;border-bottom:1px solid var(--border)">
+        <div style="text-align:left;font-weight:600">${label}</div>
+        <div style="font-family:var(--mono)">${taux}%</div>
+        <div style="font-family:var(--mono)">${rapMoy}€</div>
+        <div style="font-family:var(--mono)">${coteMoyG}€</div>
+        <div style="font-family:var(--mono);font-weight:700;color:${roiCol}">${roi===null?'-':((roi>0?'+':'')+roi.toFixed(1)+'%')}</div>
+      </div>`;
+    };
+    const entete = `<div style="display:grid;grid-template-columns:1.1fr 0.8fr 0.9fr 0.9fr 0.9fr;gap:3px;font-size:9px;color:var(--muted);font-weight:600;text-align:center;border-bottom:1px solid var(--border);padding-bottom:5px;margin-bottom:3px">
+      <div style="text-align:left">Sélection</div><div>%réuss.</div><div>Rap.moy</div><div>Cote gag.</div><div>ROI</div>
+    </div>`;
+    const sousTitre = t => `<div style="font-size:11px;font-weight:700;color:var(--gold);margin:10px 0 4px">${t}</div>`;
+
+    const boutonsAnnee = ['Tous',...anneesDetail].map(an=>
+      `<button onclick="S.detailAnnee='${an}';renderBilan()" style="flex:1;padding:7px 4px;border-radius:8px;border:1px solid ${filtre===an?'var(--gold)':'var(--border)'};background:${filtre===an?'var(--gold)':'transparent'};color:${filtre===an?'#fff':'var(--text)'};font-size:12px;font-weight:600;cursor:pointer">${an}</button>`
+    ).join('');
+
+    h+=`<div class="stitle">Statistiques détaillées par cheval</div>
+    <div class="card">
+      <div style="display:flex;gap:6px;margin-bottom:12px">${boutonsAnnee}</div>
+      ${sousTitre('🥇 Simple Gagnant')}${entete}
+      ${ligne('Cheval 1', agg.sg1)}${ligne('Cheval 2', agg.sg2)}${ligne('Cheval 3', agg.sg3)}
+      ${sousTitre('🎯 Simple Placé')}${entete}
+      ${ligne('Cheval 1', agg.sp1)}${ligne('Cheval 2', agg.sp2)}${ligne('Cheval 3', agg.sp3)}
+      ${sousTitre('🔗 Couplé Gagnant')}${entete}
+      ${ligne('1 + 2', agg.cg12)}${ligne('1 + 3', agg.cg13)}${ligne('2 + 3', agg.cg23)}
+      ${sousTitre('🔗 Couplé Placé')}${entete}
+      ${ligne('1 + 2', agg.cp12)}${ligne('1 + 3', agg.cp13)}${ligne('2 + 3', agg.cp23)}
+      <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">Rap.moy = rapport moyen touché quand ça passe. Cote gag. = cote/rapport moyen du gagnant. ROI sur mise 1€.</div>
+    </div>`;
+
+    // ── MODULE DUTCHING SG (3 chevaux, mise 3€) ──
+    const seuilSel = S.dutchSeuil;
+    const d = dutch[seuilSel];
+    const tauxD = d.courses>0?Math.round((d.gagnes/d.courses)*100):0;
+    const roiD = d.mise>0?(((d.gain-d.mise)/d.mise)*100):null;
+    const coteMoyGagD = d.cotesGag.length?(d.cotesGag.reduce((a,b)=>a+b,0)/d.cotesGag.length).toFixed(2):'-';
+    const seuilBreakeven = tauxD>0 ? (3/(tauxD/100)).toFixed(2) : '-'; // cote gagnant pour équilibre
+    const roiColD = roiD===null?'var(--muted)':roiD>0?'var(--green)':'var(--red)';
+
+    const boutonsSeuil = [[0,'Toutes'],[3,'C1≥3'],[4,'C1≥4'],[5,'C1≥5']].map(([s,lab])=>
+      `<button onclick="S.dutchSeuil=${s};renderBilan()" style="flex:1;padding:7px 4px;border-radius:8px;border:1px solid ${seuilSel===s?'var(--blue)':'var(--border)'};background:${seuilSel===s?'var(--blue)':'transparent'};color:${seuilSel===s?'#fff':'var(--text)'};font-size:12px;font-weight:600;cursor:pointer">${lab}</button>`
+    ).join('');
+
+    h+=`<div class="stitle">Stratégie dutching — 3 chevaux en Simple Gagnant</div>
+    <div class="card" style="border-color:rgba(58,143,212,.3)">
+      <div style="font-size:11px;color:var(--dim);margin-bottom:10px;line-height:1.5">
+        On joue C1 + C2 + C3 en Simple Gagnant (mise 3€). Un seul peut gagner et doit rembourser les 3 mises. Filtre la cote minimale de C1 :
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:12px">${boutonsSeuil}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:center">
+        <div style="padding:10px;background:var(--sf);border-radius:10px">
+          <div style="font-family:var(--mono);font-size:22px;font-weight:700;color:${roiColD}">${roiD===null?'-':((roiD>0?'+':'')+roiD.toFixed(1)+'%')}</div>
+          <div style="font-size:11px;color:var(--muted)">ROI dutching</div>
+        </div>
+        <div style="padding:10px;background:var(--sf);border-radius:10px">
+          <div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--gold)">${tauxD}%</div>
+          <div style="font-size:11px;color:var(--muted)">Un des 3 gagne</div>
+        </div>
+        <div style="padding:10px;background:var(--sf);border-radius:10px">
+          <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--text)">${coteMoyGagD}€</div>
+          <div style="font-size:11px;color:var(--muted)">Cote moy. gagnant</div>
+        </div>
+        <div style="padding:10px;background:var(--sf);border-radius:10px">
+          <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--orange)">${seuilBreakeven}€</div>
+          <div style="font-size:11px;color:var(--muted)">Seuil équilibre</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--dim);margin-top:10px;text-align:center">
+        ${d.courses} courses · mise ${d.mise}€ → gain ${d.gain.toFixed(0)}€
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:8px;font-style:italic">
+        💡 Rentable si la cote moyenne du gagnant (${coteMoyGagD}€) dépasse le seuil d'équilibre (${seuilBreakeven}€).
+      </div>
+    </div>`;
+  }
+
   // ── ROI PAR MOIS (identifier les périodes à éviter) ──
   // Regroupe par mois (toutes années confondues ET par année)
   const moisData = {}; // "MM/YYYY" -> {courses, sgGagnes, sgGain, spGagnes, spGain}
@@ -1663,14 +1786,9 @@ function renderBilan() {
     md.courses++;
     // Simple Placé (meilleur pari) avec rapport réel
     md.spMise+=1;
-    if(a.sp_rap!==undefined){
-      if(a.sp_rap){ md.spGain+=a.sp_rap; md.spGagnes++; }
-    } else {
-      // ancien format : approximation via position
-      const arr=(a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
-      const top=(a.top3||[]).map(p=>p.numero);
-      if(top[0]&&arr.slice(0,3).includes(top[0])) md.spGagnes++;
-    }
+    const arr=(a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
+    const c1m=(a.top3||[])[0]?.numero;
+    if(c1m&&arr.slice(0,3).includes(c1m)){ const r=lireRapport(a,'SIMPLE_PLACE',String(c1m)); if(r){ md.spGain+=r; md.spGagnes++; } }
   });
 
   const moisArr = Object.entries(moisData)
