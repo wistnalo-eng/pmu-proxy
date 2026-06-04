@@ -932,9 +932,7 @@ async function lancerScan2() {
         return {...pvm,...r};
       }).sort((a,b)=>{
         if(b.total!==a.total) return b.total-a.total;
-        // Départage 1 : qualité des critères (somme des prédictivités) — le plus prédictif passe devant
-        if((b.scoreFin||0)!==(a.scoreFin||0)) return (b.scoreFin||0)-(a.scoreFin||0);
-        // Départage 2 : numéro (garantit un ordre 100% déterministe)
+        // Départage NEUTRE par numéro (reproductible, sans biais favori/outsider)
         return (a.numPmu||a.numero||0)-(b.numPmu||b.numero||0);
       });
 
@@ -1157,9 +1155,7 @@ async function lancerBacktest() {
           return {...pvm,...r};
         }).sort((a,b)=>{
           if(b.total!==a.total) return b.total-a.total;
-          // Départage 1 : qualité des critères (somme des prédictivités) — le plus prédictif passe devant
-          if((b.scoreFin||0)!==(a.scoreFin||0)) return (b.scoreFin||0)-(a.scoreFin||0);
-          // Départage 2 : numéro (ordre 100% déterministe)
+          // Départage NEUTRE par numéro (reproductible, sans biais favori/outsider)
           return (a.numPmu||a.numero||0)-(b.numPmu||b.numero||0);
         });
 
