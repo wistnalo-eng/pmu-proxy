@@ -1873,6 +1873,70 @@ function renderBilan() {
     </div>`;
   }
 
+  // ── RÉUSSITE PAR NOMBRE DE POINTS (du cheval n°1) ──
+  // Croise le score du C1 avec son taux de placement et son ROI Simple Placé
+  const ptsData = {}; // points -> {courses, places, gain, mise}
+  let sommePtsPlaces=0, nbPlaces=0, sommePtsTous=0, nbTous=0;
+  done.forEach(a=>{
+    const t=(a.top3||[]);
+    const c1=t[0]?.numero;
+    const score=t[0]?.score;
+    if(c1==null || score==null) return;
+    const arr=(a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
+    if(!arr.length) return;
+    const place=arr.slice(0,3).includes(c1);
+    const sc=Math.round(score);
+    if(!ptsData[sc]) ptsData[sc]={courses:0, places:0, gain:0, mise:0};
+    ptsData[sc].courses++; ptsData[sc].mise+=1;
+    sommePtsTous+=score; nbTous++;
+    if(place){
+      ptsData[sc].places++;
+      sommePtsPlaces+=score; nbPlaces++;
+      const r=lireRapport(a,'SIMPLE_PLACE',String(c1));
+      if(r) ptsData[sc].gain+=r;
+    }
+  });
+
+  const ptsKeys = Object.keys(ptsData).map(Number).sort((a,b)=>a-b);
+  if(ptsKeys.length){
+    const moyPlaces = nbPlaces>0 ? (sommePtsPlaces/nbPlaces).toFixed(2) : '-';
+    const moyTous = nbTous>0 ? (sommePtsTous/nbTous).toFixed(2) : '-';
+    h+=`<div class="stitle">Réussite du C1 par nombre de points</div>
+    <div class="card">
+      <div style="display:flex;gap:10px;margin-bottom:14px">
+        <div style="flex:1;text-align:center;padding:12px 8px;background:var(--greenb);border-radius:10px">
+          <div style="font-family:var(--mono);font-size:24px;font-weight:700;color:var(--green)">${moyPlaces}</div>
+          <div style="font-size:11px;color:var(--dim)">Points moyens<br>quand C1 est placé</div>
+        </div>
+        <div style="flex:1;text-align:center;padding:12px 8px;background:var(--sf);border-radius:10px">
+          <div style="font-family:var(--mono);font-size:24px;font-weight:700;color:var(--muted)">${moyTous}</div>
+          <div style="font-size:11px;color:var(--dim)">Points moyens<br>toutes sélections</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:0.8fr 1fr 1fr 1fr;gap:4px;font-size:10px;color:var(--muted);font-weight:600;text-align:center;border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:4px">
+        <div style="text-align:left">Points</div><div>Courses</div><div>Taux placé</div><div>ROI placé</div>
+      </div>
+      ${ptsKeys.map(k=>{
+        const d=ptsData[k];
+        const taux=d.courses>0?Math.round((d.places/d.courses)*100):0;
+        const roi=d.mise>0?(((d.gain-d.mise)/d.mise)*100):null;
+        const roiCol=roi===null?'var(--muted)':roi>3?'var(--green)':roi>=0?'var(--orange)':'var(--red)';
+        // barre visuelle proportionnelle au nb de courses
+        const maxC=Math.max(...ptsKeys.map(x=>ptsData[x].courses));
+        const larg=maxC>0?Math.round((d.courses/maxC)*100):0;
+        return `<div style="display:grid;grid-template-columns:0.8fr 1fr 1fr 1fr;gap:4px;font-size:12px;text-align:center;padding:6px 0;border-bottom:1px solid var(--border);align-items:center">
+          <div style="text-align:left;font-weight:700;color:var(--gold)">${k} pt${k>1?'s':''}</div>
+          <div style="font-family:var(--mono);color:var(--muted)">${d.courses}</div>
+          <div style="font-family:var(--mono)">${taux}%</div>
+          <div style="font-family:var(--mono);font-weight:700;color:${roiCol}">${roi===null?'-':((roi>0?'+':'')+roi.toFixed(1)+'%')}</div>
+        </div>`;
+      }).join('')}
+      <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">
+        💡 Si le taux et le ROI montent avec les points, un seuil minimal de points pourrait améliorer la stratégie.
+      </div>
+    </div>`;
+  }
+
   // ── ANALYSE DE L'IMPORTANCE DES CRITÈRES ──
   // Pour chaque critère : taux de placement (top 3) des chevaux qui le possèdent
   const critStats = {}; // critère -> {placed, total}
