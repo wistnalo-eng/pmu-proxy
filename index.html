@@ -26,7 +26,7 @@
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{background:var(--bg)}
-body{color:var(--text);font-family:var(--sans);font-size:15px;min-height:100dvh;-webkit-text-size-adjust:100%;overscroll-behavior:none;padding-bottom:calc(var(--sb)+220px)}
+body{color:var(--text);font-family:var(--sans);font-size:15px;min-height:100dvh;-webkit-text-size-adjust:100%;overscroll-behavior:none;padding-bottom:calc(var(--sb)+120px)}
 ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:var(--sf)}::-webkit-scrollbar-thumb{background:var(--goldd);border-radius:2px}
 button{cursor:pointer;font-family:var(--sans);border:none;outline:none;-webkit-tap-highlight-color:transparent;transition:all .15s}
 input,select{outline:none;font-family:var(--sans);-webkit-appearance:none}
@@ -39,18 +39,18 @@ input,select{outline:none;font-family:var(--sans);-webkit-appearance:none}
   border-top:1px solid var(--border);
   box-shadow:0 -2px 12px rgba(0,0,0,.05);
   display:flex;
-  padding:10px 0 calc(var(--sb) + 10px);
+  padding:4px 0 calc(var(--sb) + 4px);
   z-index:100;
 }
 .tab-btn {
-  flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
-  background:transparent;color:var(--muted);font-size:10px;font-weight:500;padding:2px 0;
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;
+  background:transparent;color:var(--muted);font-size:9px;font-weight:500;padding:2px 0;
 }
 .tab-btn.on { color:var(--gold); }
-.tab-btn .ico { font-size:22px;line-height:1; }
+.tab-btn .ico { font-size:17px;line-height:1; }
 
 /* ── PAGES ── */
-.page { display:none; padding:calc(var(--st)+16px) 16px 16px; }
+.page { display:none; padding:calc(var(--st)+24px) 16px 16px; }
 .page.on { display:block; animation:fadeUp .25s ease; }
 @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
 
@@ -189,7 +189,7 @@ input,select{outline:none;font-family:var(--sans);-webkit-appearance:none}
       <div class="hdr-logo">Bot <span>PMU</span></div>
     </div>
     <div style="text-align:right">
-      <div style="font-family:var(--serif);font-size:22px;font-weight:700;color:var(--gold)" id="hdr-date">—</div>
+      <div style="font-family:var(--serif);font-size:21px;font-weight:700;color:var(--gold);line-height:1.3;white-space:nowrap" id="hdr-date">—</div>
       <div style="font-size:10px;color:var(--muted);text-transform:uppercase" id="hdr-day">—</div>
     </div>
   </div>
