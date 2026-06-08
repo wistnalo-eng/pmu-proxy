@@ -1883,7 +1883,7 @@ function renderBilan() {
     if(!arr.length) return;
     const place=arr.slice(0,3).includes(c1);
     const sc=Math.round(score);
-    if(!ptsData[sc]) ptsData[sc]={courses:0, places:0, gain:0, mise:0, curStreak:0, ecartMax:0, streakSum:0, streakCount:0};
+    if(!ptsData[sc]) ptsData[sc]={courses:0, places:0, gain:0, mise:0, curStreak:0, ecartMax:0, streaks:[]};
     ptsData[sc].courses++; ptsData[sc].mise+=1;
     sommePtsTous+=score; nbTous++;
     if(place){
@@ -1891,8 +1891,8 @@ function renderBilan() {
       sommePtsPlaces+=score; nbPlaces++;
       const r=lireRapport(a,'SIMPLE_PLACE',String(c1));
       if(r) ptsData[sc].gain+=r;
-      // une série sans placement se termine : on l'enregistre pour la moyenne
-      if(ptsData[sc].curStreak>0){ ptsData[sc].streakSum+=ptsData[sc].curStreak; ptsData[sc].streakCount++; }
+      // une série sans placement se termine : on l'enregistre (pour médiane + moyenne)
+      if(ptsData[sc].curStreak>0){ ptsData[sc].streaks.push(ptsData[sc].curStreak); }
       ptsData[sc].curStreak=0; // placement → la série sans réussite repart à zéro
     } else {
       ptsData[sc].curStreak++;
@@ -1900,7 +1900,7 @@ function renderBilan() {
     }
   });
   // Séries en cours en fin de période (non terminées par un placement)
-  Object.values(ptsData).forEach(d=>{ if(d.curStreak>0){ d.streakSum+=d.curStreak; d.streakCount++; } });
+  Object.values(ptsData).forEach(d=>{ if(d.curStreak>0){ d.streaks.push(d.curStreak); } });
 
   const ptsKeys = Object.keys(ptsData).map(Number).sort((a,b)=>a-b);
   if(ptsKeys.length){
@@ -1918,8 +1918,8 @@ function renderBilan() {
           <div style="font-size:11px;color:var(--dim)">Points moyens<br>toutes sélections</div>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:0.6fr 0.7fr 0.85fr 0.85fr 1fr;gap:3px;font-size:10px;color:var(--muted);font-weight:600;text-align:center;border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:4px">
-        <div style="text-align:left">Points</div><div>Courses</div><div>Taux placé</div><div>ROI placé</div><div>Écart moy/max</div>
+      <div style="display:grid;grid-template-columns:0.55fr 0.65fr 0.8fr 0.8fr 1.2fr;gap:3px;font-size:10px;color:var(--muted);font-weight:600;text-align:center;border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:4px">
+        <div style="text-align:left">Points</div><div>Courses</div><div>Taux</div><div>ROI</div><div>Écart méd/moy/max</div>
       </div>
       ${ptsKeys.map(k=>{
         const d=ptsData[k];
@@ -1929,17 +1929,25 @@ function renderBilan() {
         // barre visuelle proportionnelle au nb de courses
         const maxC=Math.max(...ptsKeys.map(x=>ptsData[x].courses));
         const larg=maxC>0?Math.round((d.courses/maxC)*100):0;
-        const ecMoy = d.streakCount>0 ? (d.streakSum/d.streakCount).toFixed(1) : '0';
-        return `<div style="display:grid;grid-template-columns:0.6fr 0.7fr 0.85fr 0.85fr 1fr;gap:3px;font-size:12px;text-align:center;padding:6px 0;border-bottom:1px solid var(--border);align-items:center">
+        // médiane et moyenne des séries sans placement
+        const st=[...d.streaks].sort((x,y)=>x-y);
+        let ecMed='0', ecMoy='0';
+        if(st.length){
+          const mid=Math.floor(st.length/2);
+          const med=st.length%2 ? st[mid] : (st[mid-1]+st[mid])/2;
+          ecMed = Number.isInteger(med) ? String(med) : med.toFixed(1);
+          ecMoy = (st.reduce((s,v)=>s+v,0)/st.length).toFixed(1);
+        }
+        return `<div style="display:grid;grid-template-columns:0.55fr 0.65fr 0.8fr 0.8fr 1.2fr;gap:3px;font-size:12px;text-align:center;padding:6px 0;border-bottom:1px solid var(--border);align-items:center">
           <div style="text-align:left;font-weight:700;color:var(--gold)">${k} pt${k>1?'s':''}</div>
           <div style="font-family:var(--mono);color:var(--muted)">${d.courses}</div>
           <div style="font-family:var(--mono)">${taux}%</div>
           <div style="font-family:var(--mono);font-weight:700;color:${roiCol}">${roi===null?'-':((roi>0?'+':'')+roi.toFixed(1)+'%')}</div>
-          <div style="font-family:var(--mono);color:var(--orange);font-weight:600">${ecMoy} / ${d.ecartMax}</div>
+          <div style="font-family:var(--mono);color:var(--orange);font-weight:600">${ecMed} / ${ecMoy} / ${d.ecartMax}</div>
         </div>`;
       }).join('')}
       <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">
-        💡 Écart = séries de courses consécutives (de cette tranche) sans placement du C1. <b>Moy</b> = série habituelle, <b>Max</b> = pire série. Calibre ta bankroll pour absorber 2-3× l'écart max.
+        💡 Écart = séries de courses consécutives sans placement du C1. <b>Méd</b> = série typique (moitié du temps en-dessous), <b>Moy</b> = moyenne (gonflée par les séries noires), <b>Max</b> = pire série. Si Méd ≪ Moy, c'est qu'il y a des séries noires occasionnelles. Calibre ta bankroll sur le Max.
       </div>
     </div>`;
   }
