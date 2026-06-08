@@ -947,23 +947,9 @@ async function lancerScan2() {
 
       S.e2Results.push({course,scored});
 
-      // Sauvegarde
-      dbAdd({
-        id:Date.now()+Math.random(),
-        date:dateFR,
-        course:course.nom||course.hippodrome,
-        hippodrome:course.hippodrome,
-        heure:course.heure,
-        isQuinte:course.isQuinte,
-        top3:scored.slice(0,3).map(p=>({numero:p.numero||p.numPmu,nom:p.nom,score:p.total,cote:parseFloat(p.dernierRapportReference?.rapport||0)||null})),
-        // Critères de tous les partants (pour analyse d'importance)
-        chevaux:scored.map(p=>({
-          numero:p.numero||p.numPmu,
-          criteres:p.pts.filter(x=>x.p>0).map(x=>x.l.split(' (')[0]) // label sans parenthèses
-        })),
-        arrivee:null,
-        statut:'en_attente',
-      });
+      // Sauvegarde auto désactivée : le scan live n'alimente plus le bilan.
+      // Les recommandations restent affichées à l'écran. Le bilan est alimenté
+      // uniquement par les backtests (arrivées auto-remplies, toutes courses jouables).
 
     } catch(e) {
       S.e2Results.push({course,error:e.message});
@@ -1897,7 +1883,7 @@ function renderBilan() {
     if(!arr.length) return;
     const place=arr.slice(0,3).includes(c1);
     const sc=Math.round(score);
-    if(!ptsData[sc]) ptsData[sc]={courses:0, places:0, gain:0, mise:0, curStreak:0, ecartMax:0};
+    if(!ptsData[sc]) ptsData[sc]={courses:0, places:0, gain:0, mise:0, curStreak:0, ecartMax:0, streakSum:0, streakCount:0};
     ptsData[sc].courses++; ptsData[sc].mise+=1;
     sommePtsTous+=score; nbTous++;
     if(place){
@@ -1905,12 +1891,16 @@ function renderBilan() {
       sommePtsPlaces+=score; nbPlaces++;
       const r=lireRapport(a,'SIMPLE_PLACE',String(c1));
       if(r) ptsData[sc].gain+=r;
+      // une série sans placement se termine : on l'enregistre pour la moyenne
+      if(ptsData[sc].curStreak>0){ ptsData[sc].streakSum+=ptsData[sc].curStreak; ptsData[sc].streakCount++; }
       ptsData[sc].curStreak=0; // placement → la série sans réussite repart à zéro
     } else {
       ptsData[sc].curStreak++;
       if(ptsData[sc].curStreak>ptsData[sc].ecartMax) ptsData[sc].ecartMax=ptsData[sc].curStreak;
     }
   });
+  // Séries en cours en fin de période (non terminées par un placement)
+  Object.values(ptsData).forEach(d=>{ if(d.curStreak>0){ d.streakSum+=d.curStreak; d.streakCount++; } });
 
   const ptsKeys = Object.keys(ptsData).map(Number).sort((a,b)=>a-b);
   if(ptsKeys.length){
@@ -1928,8 +1918,8 @@ function renderBilan() {
           <div style="font-size:11px;color:var(--dim)">Points moyens<br>toutes sélections</div>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:0.7fr 0.85fr 0.9fr 0.9fr 0.85fr;gap:3px;font-size:10px;color:var(--muted);font-weight:600;text-align:center;border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:4px">
-        <div style="text-align:left">Points</div><div>Courses</div><div>Taux placé</div><div>ROI placé</div><div>Écart max</div>
+      <div style="display:grid;grid-template-columns:0.6fr 0.7fr 0.85fr 0.85fr 1fr;gap:3px;font-size:10px;color:var(--muted);font-weight:600;text-align:center;border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:4px">
+        <div style="text-align:left">Points</div><div>Courses</div><div>Taux placé</div><div>ROI placé</div><div>Écart moy/max</div>
       </div>
       ${ptsKeys.map(k=>{
         const d=ptsData[k];
@@ -1939,16 +1929,17 @@ function renderBilan() {
         // barre visuelle proportionnelle au nb de courses
         const maxC=Math.max(...ptsKeys.map(x=>ptsData[x].courses));
         const larg=maxC>0?Math.round((d.courses/maxC)*100):0;
-        return `<div style="display:grid;grid-template-columns:0.7fr 0.85fr 0.9fr 0.9fr 0.85fr;gap:3px;font-size:12px;text-align:center;padding:6px 0;border-bottom:1px solid var(--border);align-items:center">
+        const ecMoy = d.streakCount>0 ? (d.streakSum/d.streakCount).toFixed(1) : '0';
+        return `<div style="display:grid;grid-template-columns:0.6fr 0.7fr 0.85fr 0.85fr 1fr;gap:3px;font-size:12px;text-align:center;padding:6px 0;border-bottom:1px solid var(--border);align-items:center">
           <div style="text-align:left;font-weight:700;color:var(--gold)">${k} pt${k>1?'s':''}</div>
           <div style="font-family:var(--mono);color:var(--muted)">${d.courses}</div>
           <div style="font-family:var(--mono)">${taux}%</div>
           <div style="font-family:var(--mono);font-weight:700;color:${roiCol}">${roi===null?'-':((roi>0?'+':'')+roi.toFixed(1)+'%')}</div>
-          <div style="font-family:var(--mono);color:var(--orange);font-weight:600">${d.ecartMax}</div>
+          <div style="font-family:var(--mono);color:var(--orange);font-weight:600">${ecMoy} / ${d.ecartMax}</div>
         </div>`;
       }).join('')}
       <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">
-        💡 Écart max = plus longue série de courses consécutives (de cette tranche) sans placement du C1. Sert à calibrer ta bankroll.
+        💡 Écart = séries de courses consécutives (de cette tranche) sans placement du C1. <b>Moy</b> = série habituelle, <b>Max</b> = pire série. Calibre ta bankroll pour absorber 2-3× l'écart max.
       </div>
     </div>`;
   }
@@ -1999,7 +1990,11 @@ function renderBilan() {
 
   // En attente de résultats
   if(wait.length){
-    h+=`<div class="stitle">${wait.length} résultat(s) à saisir</div>`;
+    h+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div class="stitle" style="margin:0">${wait.length} résultat(s) à saisir</div>
+      <button class="btn btn-sm" onclick="effacerEnAttente()" style="background:var(--sf);color:var(--red);font-size:11px;padding:6px 12px;white-space:nowrap">Tout effacer</button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:12px;font-style:italic">Ces entrées viennent d'anciens scans live et n'affectent pas tes statistiques. Tu peux les effacer — tes backtests sont conservés.</div>`;
     wait.slice(0,10).forEach(a=>{
       const top3=(a.top3||[]).map(p=>`<span class="chip" style="background:var(--sf);color:var(--dim);font-size:10px">#${p.numero} ${p.nom}</span>`).join(' ');
       h+=`<div class="rcard">
@@ -2105,6 +2100,18 @@ function effacerHistorique(){
   try{ localStorage.removeItem(DB); }catch{}
   renderBilan();
   toast('✅ Historique effacé');
+}
+
+function effacerEnAttente(){
+  const d = dbGet();
+  const before = (d.analyses||[]).length;
+  const kept = (d.analyses||[]).filter(a=>a.statut!=='en_attente');
+  const removed = before - kept.length;
+  if(!removed){ toast('Rien à effacer'); return; }
+  if(!confirm(`Effacer ${removed} résultat(s) en attente ? (tes backtests sont conservés)`)) return;
+  dbSet({...d, analyses: kept});
+  renderBilan();
+  toast(`✅ ${removed} en attente effacé(s)`);
 }
 
 function valArr(id) {
