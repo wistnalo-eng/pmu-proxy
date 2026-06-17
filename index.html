@@ -473,6 +473,7 @@ function updateAnalyse() {
   // Simulation : mise = pct% du capital restant avant chaque pari (composé)
   let bk = capital0, runPeak = capital0, maxDD = 0, minV = capital0, maxV = capital0, nWin = 0;
   const traj = [capital0];
+  const dates = ['Départ'];
   bets.forEach(a => {
     const c1 = (a.top3||[])[0].numero;
     const arr = (a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
@@ -486,6 +487,7 @@ function updateAnalyse() {
       bk -= stake;
     }
     traj.push(bk);
+    dates.push(a.date);
     if (bk > runPeak) runPeak = bk;
     if (bk > maxV) maxV = bk;
     if (bk < minV) minV = bk;
@@ -526,11 +528,17 @@ function updateAnalyse() {
           <div style="font-size:10px;color:var(--dim)">Drawdown max</div>
         </div>
       </div>
-      <svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;height:auto;border-radius:10px;background:var(--sf);border:1px solid var(--border)">
-        <polygon points="${areaPts}" fill="${fillCol}" stroke="none"/>
-        <line x1="${padL}" y1="${yCap}" x2="${W-padR}" y2="${yCap}" stroke="var(--muted)" stroke-dasharray="7 5" stroke-width="1" opacity="0.7"/>
-        <polyline points="${linePts}" fill="none" stroke="${lineCol}" stroke-width="2.5" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
-      </svg>
+      <div id="bk-chart-wrap" style="position:relative;touch-action:none;user-select:none;-webkit-user-select:none">
+        <svg id="bk-svg" viewBox="0 0 ${W} ${H}" width="100%" style="display:block;height:auto;border-radius:10px;background:var(--sf);border:1px solid var(--border)">
+          <polygon points="${areaPts}" fill="${fillCol}" stroke="none"/>
+          <line x1="${padL}" y1="${yCap}" x2="${W-padR}" y2="${yCap}" stroke="var(--muted)" stroke-dasharray="7 5" stroke-width="1" opacity="0.7"/>
+          <polyline points="${linePts}" fill="none" stroke="${lineCol}" stroke-width="2.5" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
+        </svg>
+        <div id="bk-vline" style="position:absolute;top:0;width:1.5px;background:var(--gold);opacity:0;pointer-events:none"></div>
+        <div id="bk-dot" style="position:absolute;width:10px;height:10px;border-radius:50%;background:${lineCol};border:2px solid #fff;box-shadow:0 0 0 1.5px ${lineCol};opacity:0;pointer-events:none;transform:translate(-50%,-50%)"></div>
+        <div id="bk-tip" style="position:absolute;top:6px;background:var(--text);color:#fff;padding:5px 10px;border-radius:8px;font-size:11px;font-family:var(--mono);white-space:nowrap;pointer-events:none;opacity:0;transform:translateX(-50%);box-shadow:0 2px 8px rgba(0,0,0,.25);z-index:5"></div>
+      </div>
+      <div style="text-align:center;font-size:10px;color:var(--muted);margin-top:6px;font-style:italic">👆 Glisse ton doigt sur la courbe pour voir la date et le montant</div>
       <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:6px">
         <span>${bets[0].date}</span>
         <span style="font-style:italic">— — capital de départ</span>
@@ -548,6 +556,39 @@ function updateAnalyse() {
         Simulation : Simple Placé sur le C1, courses 5-7 points, cote &lt; 10, sur 2024-2026. Mise = ${pct}% du capital restant avant chaque pari (intérêts composés).
       </div>
     </div>`;
+
+  // ── Interaction tactile : curseur vertical + point + infobulle ──
+  const svg = document.getElementById('bk-svg');
+  const wrap = document.getElementById('bk-chart-wrap');
+  const vline = document.getElementById('bk-vline');
+  const dot = document.getElementById('bk-dot');
+  const tip = document.getElementById('bk-tip');
+  if (svg && wrap && vline && dot && tip) {
+    const showAt = clientX => {
+      const rect = svg.getBoundingClientRect();
+      if (!rect.width) return;
+      let frac = (clientX - rect.left) / rect.width;
+      frac = Math.max(0, Math.min(1, frac));
+      const idx = Math.round(frac * (traj.length - 1));
+      const xPx = (xOf(idx) / W) * rect.width;
+      const yPx = (yOf(traj[idx]) / H) * rect.height;
+      vline.style.height = rect.height + 'px';
+      vline.style.left = xPx + 'px';
+      vline.style.opacity = '1';
+      dot.style.left = xPx + 'px';
+      dot.style.top = yPx + 'px';
+      dot.style.opacity = '1';
+      tip.innerHTML = `${dates[idx]} · <b>${fmt(traj[idx])}€</b>`;
+      tip.style.opacity = '1';
+      let tx = xPx;
+      const tw = tip.offsetWidth;
+      if (tx - tw/2 < 2) tx = tw/2 + 2;
+      else if (tx + tw/2 > rect.width - 2) tx = rect.width - tw/2 - 2;
+      tip.style.left = tx + 'px';
+    };
+    wrap.addEventListener('pointerdown', e => { showAt(e.clientX); });
+    wrap.addEventListener('pointermove', e => { showAt(e.clientX); });
+  }
 }
 
 function goPage(name) {
