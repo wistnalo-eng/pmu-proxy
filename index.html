@@ -499,6 +499,24 @@ function updateAnalyse() {
   const growthCol = growth >= 0 ? 'var(--green)' : 'var(--red)';
   const fmt = n => Math.round(n).toLocaleString('fr-FR');
 
+  // ROI flat par année (1€/course) sur le MÊME sous-ensemble — isole l'edge pur
+  const yrData = {};
+  bets.forEach(a => {
+    const ym = (a.date||'').match(/\/(\d{4})$/);
+    const yr = ym ? ym[1] : '?';
+    if (!yrData[yr]) yrData[yr] = {courses:0, places:0, gain:0};
+    const c1 = (a.top3||[])[0].numero;
+    const arr = (a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
+    const place = arr.slice(0,3).includes(c1);
+    yrData[yr].courses++;
+    if (place) {
+      yrData[yr].places++;
+      const r = lireRapport(a, 'SIMPLE_PLACE', String(c1));
+      if (r && r > 0) yrData[yr].gain += r;
+    }
+  });
+  const years = Object.keys(yrData).sort();
+
   // Graphique SVG
   const W=1000, H=300, padT=14, padB=14, padL=6, padR=6;
   const rng = (maxV - minV) || 1;
@@ -554,6 +572,28 @@ function updateAnalyse() {
       </div>
       <div style="font-size:10px;color:var(--muted);margin-top:12px;font-style:italic">
         Simulation : Simple Placé sur le C1, courses 5-7 points, cote &lt; 10, sur 2024-2026. Mise = ${pct}% du capital restant avant chaque pari (intérêts composés).
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px">ROI à plat par année <span style="font-size:11px;color:var(--muted);font-weight:400">(edge pur, sans effet de mise)</span></div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Même sous-ensemble (5-7 pts, cote &lt; 10). 1€ par course. C'est le verdict sur l'évolution de l'edge.</div>
+      <div style="display:grid;grid-template-columns:0.8fr 0.9fr 1fr 1fr;gap:4px;font-size:10px;color:var(--muted);font-weight:600;text-align:center;border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:4px">
+        <div style="text-align:left">Année</div><div>Courses</div><div>Taux placé</div><div>ROI flat</div>
+      </div>
+      ${years.map(yr=>{
+        const d=yrData[yr];
+        const taux=d.courses>0?Math.round(d.places/d.courses*100):0;
+        const roi=d.courses>0?((d.gain-d.courses)/d.courses)*100:0;
+        const roiCol=roi>3?'var(--green)':roi>=0?'var(--orange)':'var(--red)';
+        return `<div style="display:grid;grid-template-columns:0.8fr 0.9fr 1fr 1fr;gap:4px;font-size:13px;text-align:center;padding:7px 0;border-bottom:1px solid var(--border);align-items:center">
+          <div style="text-align:left;font-weight:700;color:var(--gold)">${yr}</div>
+          <div style="font-family:var(--mono);color:var(--muted)">${d.courses}</div>
+          <div style="font-family:var(--mono)">${taux}%</div>
+          <div style="font-family:var(--mono);font-weight:700;color:${roiCol}">${roi>=0?'+':''}${roi.toFixed(1)}%</div>
+        </div>`;
+      }).join('')}
+      <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">
+        💡 Si le ROI flat reste positif chaque année, l'edge tient et la stagnation de la courbe vient surtout de la traînée de variance à 5%. S'il chute en 2025-2026, l'edge a réellement faibli.
       </div>
     </div>`;
 
