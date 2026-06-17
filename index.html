@@ -1952,6 +1952,61 @@ function renderBilan() {
     </div>`;
   }
 
+  // ── ROI PAR TRANCHE DE COTE (analyse de la valeur) — sur la zone de jeu 5-7 points ──
+  // La cote du C1 (connue avant la course) est le proxy du rapport placé :
+  // cote basse = favori = rapport placé faible. On regarde si ces favoris sont rentables.
+  const coteBands = [
+    {label:'< 2,5', min:0, max:2.5, note:'favoris'},
+    {label:'2,5 – 4', min:2.5, max:4, note:''},
+    {label:'4 – 6', min:4, max:6, note:''},
+    {label:'6 – 10', min:6, max:10, note:''},
+    {label:'≥ 10', min:10, max:Infinity, note:'outsiders'},
+  ];
+  const coteData = coteBands.map(b=>({...b, courses:0, places:0, gain:0}));
+  done.forEach(a=>{
+    const t=(a.top3||[]);
+    const c1=t[0]?.numero, score=t[0]?.score, cote=t[0]?.cote;
+    if(c1==null || score==null || !cote) return;
+    const sc=Math.round(score);
+    if(sc<5 || sc>7) return; // zone de jeu 5-7 points
+    const arr=(a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
+    if(!arr.length) return;
+    const place=arr.slice(0,3).includes(c1);
+    const band=coteData.find(b=>cote>=b.min && cote<b.max);
+    if(!band) return;
+    band.courses++;
+    if(place){
+      band.places++;
+      const r=lireRapport(a,'SIMPLE_PLACE',String(c1));
+      if(r) band.gain+=r;
+    }
+  });
+  const coteTotal = coteData.reduce((s,b)=>s+b.courses,0);
+  if(coteTotal>0){
+    h+=`<div class="stitle">ROI par tranche de cote (valeur)</div>
+    <div class="card">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Sur tes courses jouées (C1 à 5-7 points). La cote est connue <b>avant</b> la course — c'est ton filtre de valeur actionnable.</div>
+      <div style="display:grid;grid-template-columns:1fr 0.7fr 0.8fr 0.9fr;gap:4px;font-size:10px;color:var(--muted);font-weight:600;text-align:center;border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:4px">
+        <div style="text-align:left">Cote C1</div><div>Courses</div><div>Taux placé</div><div>ROI placé</div>
+      </div>
+      ${coteData.map(b=>{
+        if(!b.courses) return '';
+        const taux=Math.round((b.places/b.courses)*100);
+        const roi=((b.gain-b.courses)/b.courses)*100;
+        const roiCol=roi>3?'var(--green)':roi>=0?'var(--orange)':'var(--red)';
+        return `<div style="display:grid;grid-template-columns:1fr 0.7fr 0.8fr 0.9fr;gap:4px;font-size:12px;text-align:center;padding:6px 0;border-bottom:1px solid var(--border);align-items:center">
+          <div style="text-align:left;font-weight:700;color:var(--gold)">${b.label}${b.note?`<span style="font-size:9px;color:var(--muted);font-weight:400"> ${b.note}</span>`:''}</div>
+          <div style="font-family:var(--mono);color:var(--muted)">${b.courses}</div>
+          <div style="font-family:var(--mono)">${taux}%</div>
+          <div style="font-family:var(--mono);font-weight:700;color:${roiCol}">${(roi>0?'+':'')+roi.toFixed(1)}%</div>
+        </div>`;
+      }).join('')}
+      <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">
+        💡 Cote basse = favori = rapport placé faible (ton 1,30). Si la tranche « < 2,5 » est en ROI négatif, c'est la preuve qu'il faut éviter de jouer le placé sur les favoris écrasants : pas assez de valeur.
+      </div>
+    </div>`;
+  }
+
   // ── ANALYSE DE L'IMPORTANCE DES CRITÈRES ──
   // Pour chaque critère : taux de placement (top 3) des chevaux qui le possèdent
   const critStats = {}; // critère -> {placed, total}
