@@ -261,6 +261,14 @@ input,select{outline:none;font-family:var(--sans);-webkit-appearance:none}
 <!-- ══════════════════════════════════════
      ONGLET BILAN
 ══════════════════════════════════════ -->
+<div class="page" id="page-analyse">
+  <div style="padding-top:calc(var(--st)+16px)">
+    <div class="hdr-eyebrow" style="margin-bottom:6px">Simulateur de Bankroll</div>
+    <div class="hdr-logo" style="margin-bottom:20px">Analyse <span>BK</span></div>
+    <div id="analyse-content"></div>
+  </div>
+</div>
+
 <div class="page" id="page-bilan">
   <div style="padding-top:calc(var(--st)+16px)">
     <div class="hdr-eyebrow" style="margin-bottom:6px">Performance & Statistiques</div>
@@ -275,6 +283,9 @@ input,select{outline:none;font-family:var(--sans);-webkit-appearance:none}
 <nav class="tabs-bar">
   <button class="tab-btn on" onclick="goPage('jeux')" id="nav-jeux">
     <span class="ico">🎯</span>Jeux
+  </button>
+  <button class="tab-btn" onclick="goPage('analyse')" id="nav-analyse">
+    <span class="ico">📈</span>Analyse
   </button>
   <button class="tab-btn" onclick="goPage('bilan')" id="nav-bilan">
     <span class="ico">📊</span>Bilan
@@ -387,13 +398,166 @@ const dbUpd = (id,upd) => { const d=dbGet(); const i=d.analyses.findIndex(a=>a.i
 // ══════════════════════════════════════════════════════
 //  NAVIGATION
 // ══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
+//  ONGLET ANALYSE — Simulateur de bankroll (mise proportionnelle)
+// ══════════════════════════════════════════════════════
+function renderAnalyse() {
+  if (S.bkCapital == null) S.bkCapital = 1000;
+  if (S.bkPct == null) S.bkPct = 2;
+  const el = document.getElementById('analyse-content');
+  el.innerHTML = `
+    <div class="card" style="margin-bottom:14px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:12px">Paramètres de simulation</div>
+      <div style="margin-bottom:16px">
+        <label style="font-size:12px;color:var(--dim);display:block;margin-bottom:6px">Capital de départ</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="number" id="bk-capital" value="${S.bkCapital}" min="1" step="50"
+            onchange="S.bkCapital=Math.max(1,+this.value||1000);updateAnalyse()"
+            style="flex:1;padding:11px;border:1px solid var(--border);border-radius:10px;font-size:16px;font-family:var(--mono);background:var(--sf);color:var(--text)"/>
+          <span style="font-size:17px;color:var(--muted)">€</span>
+        </div>
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--dim);display:flex;justify-content:space-between;margin-bottom:8px">
+          <span>Mise par pari (% du capital restant)</span>
+          <span id="pct-val" style="font-weight:700;color:var(--gold);font-family:var(--mono)">${S.bkPct}%</span>
+        </label>
+        <input type="range" id="bk-pct" min="1" max="5" step="0.5" value="${S.bkPct}"
+          oninput="S.bkPct=+this.value;document.getElementById('pct-val').textContent=this.value+'%';updateAnalyse()"
+          style="width:100%;accent-color:var(--gold)"/>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:2px"><span>1%</span><span>5%</span></div>
+      </div>
+    </div>
+    <div id="analyse-result"></div>`;
+  updateAnalyse();
+}
+
+function updateAnalyse() {
+  const el = document.getElementById('analyse-result');
+  if (!el) return;
+  const db = dbGet();
+  const done = (db.analyses || []).filter(a => a.statut === 'complete');
+
+  const parseDate = ds => { const m = (ds||'').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/); return m ? new Date(+m[3],+m[2]-1,+m[1]).getTime() : 0; };
+  const lireRapport = (a, type, comb) => {
+    if (a.raps) {
+      const b = a.raps.find(x => x.t === type);
+      if (!b) return null;
+      const cible = String(comb).replace(/\s/g,'').toLowerCase();
+      const r = (b.r||[]).find(x => String(x.c||'').replace(/\s/g,'').toLowerCase() === cible);
+      return r ? (parseFloat(r.d)||0)/100 : null;
+    }
+    return null;
+  };
+
+  const capital0 = Math.max(1, S.bkCapital || 1000);
+  const pct = Math.min(5, Math.max(1, S.bkPct || 2));
+
+  // Filtre : C1, courses 5-7 points, cote gagnante < 10
+  const bets = done.filter(a => {
+    const c1 = (a.top3||[])[0];
+    if (!c1 || c1.score == null) return false;
+    const sc = Math.round(c1.score);
+    if (sc < 5 || sc > 7) return false;
+    const cote = c1.cote;
+    if (!cote || cote >= 10) return false;
+    const arr = (a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
+    return arr.length > 0;
+  }).sort((a,b) => parseDate(a.date) - parseDate(b.date));
+
+  if (!bets.length) {
+    el.innerHTML = '<div class="card" style="text-align:center;color:var(--muted);padding:24px">Aucune course jouable dans le backtest.<br>Lance d\'abord des backtests dans l\'onglet Bilan.</div>';
+    return;
+  }
+
+  // Simulation : mise = pct% du capital restant avant chaque pari (composé)
+  let bk = capital0, runPeak = capital0, maxDD = 0, minV = capital0, maxV = capital0, nWin = 0;
+  const traj = [capital0];
+  bets.forEach(a => {
+    const c1 = (a.top3||[])[0].numero;
+    const arr = (a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
+    const place = arr.slice(0,3).includes(c1);
+    const stake = bk * (pct/100);
+    if (place) {
+      const r = lireRapport(a, 'SIMPLE_PLACE', String(c1));
+      if (r && r > 0) { bk += stake*(r-1); nWin++; }
+      else { bk -= stake; }
+    } else {
+      bk -= stake;
+    }
+    traj.push(bk);
+    if (bk > runPeak) runPeak = bk;
+    if (bk > maxV) maxV = bk;
+    if (bk < minV) minV = bk;
+    const dd = runPeak > 0 ? (runPeak - bk)/runPeak : 0;
+    if (dd > maxDD) maxDD = dd;
+  });
+
+  const growth = ((bk - capital0)/capital0)*100;
+  const growthCol = growth >= 0 ? 'var(--green)' : 'var(--red)';
+  const fmt = n => Math.round(n).toLocaleString('fr-FR');
+
+  // Graphique SVG
+  const W=1000, H=300, padT=14, padB=14, padL=6, padR=6;
+  const rng = (maxV - minV) || 1;
+  const xOf = i => padL + (i/(traj.length-1))*(W-padL-padR);
+  const yOf = v => padT + (1-(v-minV)/rng)*(H-padT-padB);
+  let linePts = '';
+  for (let i=0;i<traj.length;i++) linePts += `${xOf(i).toFixed(1)},${yOf(traj[i]).toFixed(1)} `;
+  linePts = linePts.trim();
+  const areaPts = `${padL},${H-padB} ${linePts} ${W-padR},${H-padB}`;
+  const yCap = yOf(capital0).toFixed(1);
+  const lineCol = bk >= capital0 ? '#1a9d52' : '#c83232';
+  const fillCol = bk >= capital0 ? 'rgba(26,157,82,0.12)' : 'rgba(200,50,50,0.12)';
+
+  el.innerHTML = `
+    <div class="card" style="margin-bottom:14px">
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <div style="flex:1;text-align:center;padding:10px 4px;background:${growth>=0?'var(--greenb)':'var(--redb)'};border-radius:10px">
+          <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:${growthCol}">${fmt(bk)}€</div>
+          <div style="font-size:10px;color:var(--dim)">Capital final</div>
+        </div>
+        <div style="flex:1;text-align:center;padding:10px 4px;background:var(--sf);border:1px solid var(--border);border-radius:10px">
+          <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:${growthCol}">${growth>=0?'+':''}${growth.toFixed(0)}%</div>
+          <div style="font-size:10px;color:var(--dim)">Croissance</div>
+        </div>
+        <div style="flex:1;text-align:center;padding:10px 4px;background:var(--sf);border:1px solid var(--border);border-radius:10px">
+          <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--red)">−${(maxDD*100).toFixed(0)}%</div>
+          <div style="font-size:10px;color:var(--dim)">Drawdown max</div>
+        </div>
+      </div>
+      <svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;height:auto;border-radius:10px;background:var(--sf);border:1px solid var(--border)">
+        <polygon points="${areaPts}" fill="${fillCol}" stroke="none"/>
+        <line x1="${padL}" y1="${yCap}" x2="${W-padR}" y2="${yCap}" stroke="var(--muted)" stroke-dasharray="7 5" stroke-width="1" opacity="0.7"/>
+        <polyline points="${linePts}" fill="none" stroke="${lineCol}" stroke-width="2.5" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
+      </svg>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:6px">
+        <span>${bets[0].date}</span>
+        <span style="font-style:italic">— — capital de départ</span>
+        <span>${bets[bets.length-1].date}</span>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
+        <div>Paris simulés : <b>${bets.length}</b></div>
+        <div>Réussite : <b>${Math.round(nWin/bets.length*100)}%</b></div>
+        <div>Plus haut : <b style="color:var(--green)">${fmt(maxV)}€</b></div>
+        <div>Plus bas : <b style="color:${minV<capital0?'var(--red)':'var(--text)'}">${fmt(minV)}€</b></div>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:12px;font-style:italic">
+        Simulation : Simple Placé sur le C1, courses 5-7 points, cote &lt; 10, sur 2024-2026. Mise = ${pct}% du capital restant avant chaque pari (intérêts composés).
+      </div>
+    </div>`;
+}
+
 function goPage(name) {
-  ['jeux','bilan'].forEach(n => {
+  ['jeux','analyse','bilan'].forEach(n => {
     document.getElementById('page-'+n).classList.toggle('on', n===name);
     document.getElementById('nav-'+n).classList.toggle('on', n===name);
   });
   window.scrollTo({top:0});
   if (name==='bilan') renderBilan();
+  if (name==='analyse') renderAnalyse();
 }
 
 function showBloc(name) {
