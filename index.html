@@ -903,27 +903,33 @@ function updateScan2Btn() {
 // ══════════════════════════════════════════════════════
 // ── LISTES OFFICIELLES PAR ANNÉE (LeTrot.com) ──
 const DRIVERS_BY_YEAR = {
-  2023: ['raffin','lebourgeois','a. abrivard','m. abrivard','rochard','thomain','békaert','bekaert'],
-  2024: ['raffin','lebourgeois','rochard','békaert','bekaert','m. abrivard','mottier','thomain'],
-  2025: ['raffin','rochard','lebourgeois','mottier','a. abrivard','thomain','békaert','bekaert'],
+  2023: ['raffin','lebourgeois','a. abrivard','m. abrivard','békaert','bekaert','thomain'],
+  2024: ['raffin','lebourgeois','rochard','békaert','bekaert','m. abrivard','thomain'],
+  2025: ['raffin','rochard','lebourgeois','a. abrivard','thomain','m. abrivard'],
   2026: ['raffin','rochard','mottier','a. abrivard','m. abrivard','lebourgeois'],
 };
 const CUMULARDS_BY_YEAR = {
-  2023: ['bazire','mottier','derieux','m. abrivard','a. abrivard','n. bazire'],
-  2024: ['bazire','mottier','derieux','m. abrivard','a. abrivard','n. bazire'],
-  2025: ['mottier','derieux','bazire','m. abrivard','a. abrivard','n. bazire'],
+  2023: ['bazire','duvaldestin','m. abrivard','henry','leblanc','derieux'],
+  2024: ['mottier','duvaldestin','bazire','m. abrivard','derieux','henry'],
+  2025: ['mottier','duvaldestin','n. bazire','m. abrivard','derieux','henry'],
   2026: ['mottier','bazire','derieux','m. abrivard','a. abrivard','n. bazire'],
 };
 const TRAINERS_BY_YEAR = {
-  2023: ['duvaldestin','bazire','l-c. abrivard','lc. abrivard','guarato','terry','derieux'],
-  2024: ['duvaldestin','terry','n. bazire','l-c. abrivard','lc. abrivard','guarato','derieux'],
-  2025: ['duvaldestin','terry','bazire','l-c. abrivard','lc. abrivard','guarato','derieux'],
+  2023: ['duvaldestin','guarato','bazire','henry','m. abrivard','leblanc'],
+  2024: ['duvaldestin','mottier','bazire','henry','m. abrivard','derieux'],
+  2025: ['duvaldestin','terry','n. bazire','l-c. abrivard','lc. abrivard','mottier','guarato'],
   2026: ['duvaldestin','l-c. abrivard','lc. abrivard','terry','n. bazire','guarato','derieux'],
 };
 
 // Récupère la bonne liste selon l'année de la course
 // Flag global pour activer/désactiver le décalage semestriel (test)
 let DECALAGE_SEMESTRIEL = true;
+// ⚙️ MODE TEST anti-fuite — décalage ANNUEL COMPLET
+// true  = on n'utilise QUE le classement de la saison précédente terminée (zéro anticipation,
+//         réaliste : c'est tout ce dont on dispose en pariant pour de vrai)
+// false = comportement d'origine (décalage semestriel)
+// Pour revenir à l'état d'origine : mettre cette ligne à false, puis re-backtester.
+let DECALAGE_ANNUEL_COMPLET = true;
 
 const yearFromCourse = (course) => {
   // Récupère année + mois depuis le backtest ou la date sélectionnée
@@ -931,6 +937,8 @@ const yearFromCourse = (course) => {
   if(course?._year){ y = course._year; m = course._month || 7; }
   else if(S.selDate){ y = S.selDate.getFullYear(); m = S.selDate.getMonth()+1; }
   else { const n=new Date(); y=n.getFullYear(); m=n.getMonth()+1; }
+  // MODE TEST anti-fuite : toujours la saison précédente (connue en réel), toute l'année
+  if(DECALAGE_ANNUEL_COMPLET) return y-1;
   // Décalage semestriel : jan-juin, le classement de l'année en cours
   // n'est pas encore représentatif → on utilise celui de l'année précédente
   if(DECALAGE_SEMESTRIEL && m<=6) return y-1;
