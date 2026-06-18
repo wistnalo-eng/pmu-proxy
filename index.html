@@ -2304,6 +2304,70 @@ function renderBilan() {
     </div>`;
   }
 
+  // ── DÉRIVE DES CRITÈRES PAR ANNÉE (alignement) ──
+  // Pour chaque critère : taux de placement top 3 des chevaux qui le possèdent, ventilé par année.
+  const critByYear = {};
+  done.forEach(a=>{
+    if(!a.chevaux) return;
+    const my=(a.date||'').match(/\d{1,2}\/\d{1,2}\/(\d{4})/);
+    if(!my) return;
+    const an=my[1];
+    const arr=(a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
+    const arr3=arr.slice(0,3);
+    if(!arr3.length) return;
+    a.chevaux.forEach(ch=>{
+      const estPlace=arr3.includes(ch.numero);
+      (ch.criteres||[]).forEach(crit=>{
+        if(!critByYear[crit]) critByYear[crit]={};
+        if(!critByYear[crit][an]) critByYear[crit][an]={placed:0,total:0};
+        critByYear[crit][an].total++;
+        if(estPlace) critByYear[crit][an].placed++;
+      });
+    });
+  });
+  const YRS=['2024','2025','2026'];
+  const txY=(o)=> (o&&o.total>0)? Math.round(o.placed/o.total*100) : null;
+  const driftArr = Object.entries(critByYear).map(([nom,yd])=>{
+    const t={}, n={};
+    YRS.forEach(y=>{ t[y]=txY(yd[y]); n[y]=yd[y]?yd[y].total:0; });
+    const delta=(t['2024']!=null&&t['2025']!=null)? t['2025']-t['2024'] : null;
+    return {nom,t,n,delta};
+  }).filter(c=> c.n['2024']>=20 && c.n['2025']>=20)
+    .sort((a,b)=> (a.delta==null?1:(b.delta==null?-1:a.delta-b.delta)));
+
+  if(driftArr.length){
+    h+=`<div class="stitle">Dérive des critères par année (alignement)</div>
+    <div class="card">
+      <div style="font-size:11px;color:var(--dim);margin-bottom:12px;line-height:1.5">
+        Taux de placement (top 3) des chevaux possédant chaque critère, par année. Δ = variation 2024→2025. Un critère en rouge a perdu son pouvoir prédictif : il est toujours scoré comme utile alors qu'il ne l'est plus.
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead><tr style="color:var(--muted);text-align:right">
+          <th style="text-align:left;padding:4px 2px">Critère</th>
+          <th>2024</th><th>2025</th><th>2026</th><th style="padding-left:6px">Δ 24→25</th>
+        </tr></thead>
+        <tbody>
+        ${driftArr.map(c=>{
+          const cell=(y)=> c.t[y]==null?'<span style="color:var(--muted)">—</span>':`${c.t[y]}%`;
+          let dcol='var(--muted)', dtxt='—';
+          if(c.delta!=null){
+            dcol = c.delta<=-5?'var(--red)':(c.delta<0?'var(--orange)':(c.delta>=5?'var(--green)':'var(--gold)'));
+            dtxt=(c.delta>0?'+':'')+c.delta+' pts';
+          }
+          return `<tr style="border-top:1px solid var(--border);text-align:right;font-family:var(--mono)">
+            <td style="text-align:left;font-family:inherit;font-weight:600;padding:5px 2px;line-height:1.25">${c.nom}</td>
+            <td>${cell('2024')}</td><td>${cell('2025')}</td><td>${cell('2026')}</td>
+            <td style="padding-left:6px;color:${dcol};font-weight:700">${dtxt}</td>
+          </tr>`;
+        }).join('')}
+        </tbody>
+      </table>
+      <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">
+        💡 Trié par plus forte baisse. Critères avec ≥20 occurrences en 2024 ET 2025. Un Δ rouge (≤−5 pts) = critère à retirer ou repondérer.
+      </div>
+    </div>`;
+  }
+
   // En attente de résultats
   if(wait.length){
     h+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
