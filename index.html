@@ -517,6 +517,26 @@ function updateAnalyse() {
   });
   const years = Object.keys(yrData).sort();
 
+  // Poche valeur : cote gagnante entre 4 et 10 (sous-ensemble de bets), par année
+  const yr410 = {};
+  bets.forEach(a => {
+    const c1 = (a.top3||[])[0];
+    if (!c1 || c1.cote == null || c1.cote < 4) return; // bets est déjà <10 → ici [4,10[
+    const ym = (a.date||'').match(/\/(\d{4})$/);
+    const yr = ym ? ym[1] : '?';
+    if (!yr410[yr]) yr410[yr] = {courses:0, places:0, gain:0};
+    const c1n = c1.numero;
+    const arr = (a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
+    const place = arr.slice(0,3).includes(c1n);
+    yr410[yr].courses++;
+    if (place) {
+      yr410[yr].places++;
+      const r = lireRapport(a, 'SIMPLE_PLACE', String(c1n));
+      if (r && r > 0) yr410[yr].gain += r;
+    }
+  });
+  const years410 = Object.keys(yr410).sort();
+
   // Graphique SVG
   const W=1000, H=300, padT=14, padB=14, padL=6, padR=6;
   const rng = (maxV - minV) || 1;
@@ -594,6 +614,28 @@ function updateAnalyse() {
       }).join('')}
       <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">
         💡 Si le ROI flat reste positif chaque année, l'edge tient et la stagnation de la courbe vient surtout de la traînée de variance à 5%. S'il chute en 2025-2026, l'edge a réellement faibli.
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px">Poche valeur — cote 4-10, par année <span style="font-size:11px;color:var(--muted);font-weight:400">(test de robustesse)</span></div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px">C1 à 5-7 pts ET cote gagnante entre 4 et 10. Si cette poche reste positive en 2025, l'edge est indépendant du régime favori.</div>
+      <div style="display:grid;grid-template-columns:0.8fr 0.9fr 1fr 1fr;gap:4px;font-size:10px;color:var(--muted);font-weight:600;text-align:center;border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:4px">
+        <div style="text-align:left">Année</div><div>Courses</div><div>Taux placé</div><div>ROI flat</div>
+      </div>
+      ${years410.map(yr=>{
+        const d=yr410[yr];
+        const taux=d.courses>0?Math.round(d.places/d.courses*100):0;
+        const roi=d.courses>0?((d.gain-d.courses)/d.courses)*100:0;
+        const roiCol=roi>3?'var(--green)':roi>=0?'var(--orange)':'var(--red)';
+        return `<div style="display:grid;grid-template-columns:0.8fr 0.9fr 1fr 1fr;gap:4px;font-size:13px;text-align:center;padding:7px 0;border-bottom:1px solid var(--border);align-items:center">
+          <div style="text-align:left;font-weight:700;color:var(--gold)">${yr}</div>
+          <div style="font-family:var(--mono);color:var(--muted)">${d.courses}</div>
+          <div style="font-family:var(--mono)">${taux}%</div>
+          <div style="font-family:var(--mono);font-weight:700;color:${roiCol}">${roi>=0?'+':''}${roi.toFixed(1)}%</div>
+        </div>`;
+      }).join('')}
+      <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">
+        💡 Échantillons plus petits (cote 4-10 seule) → plus de variance. Regarde la tendance vs le tableau au-dessus : si 2025 est positif ici alors qu'il était nul là-haut, la poche est robuste.
       </div>
     </div>`;
 
