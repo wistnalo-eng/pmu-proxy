@@ -573,6 +573,35 @@ function updateAnalyse() {
   }).join('');
   const segHead = `<div style="display:grid;grid-template-columns:0.8fr 0.9fr 1fr 1fr;gap:4px;font-size:10px;color:var(--muted);font-weight:600;text-align:center;border-bottom:1px solid var(--border);padding-bottom:5px;margin-bottom:2px"><div style="text-align:left">Année</div><div>Courses</div><div>Taux placé</div><div>ROI flat</div></div>`;
 
+  // ── Squelette VALUE : proba(score) vs proba(marché/cote) ──
+  // 1. calibrer score → taux placé empirique ; 2. cote → taux placé ; 3. bucketer par écart
+  const coteBucketOf = c => c<2.5?'<2.5':(c<4?'2.5-4':(c<6?'4-6':'6-10'));
+  const scAgg = {}, coAgg = {};
+  const vInfo = bets.map(a => {
+    const c1 = (a.top3||[])[0];
+    const sc = Math.round(c1.score);
+    const cb = coteBucketOf(c1.cote);
+    const arr = (a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
+    const place = arr.slice(0,3).includes(c1.numero);
+    const rap = place ? (lireRapport(a,'SIMPLE_PLACE',String(c1.numero))||0) : 0;
+    if(!scAgg[sc]) scAgg[sc]={n:0,p:0};
+    scAgg[sc].n++; if(place) scAgg[sc].p++;
+    if(!coAgg[cb]) coAgg[cb]={n:0,p:0};
+    coAgg[cb].n++; if(place) coAgg[cb].p++;
+    return {sc, cb, place, rap};
+  });
+  const scP = {}; for(const k in scAgg) scP[k]=scAgg[k].p/scAgg[k].n;
+  const coP = {}; for(const k in coAgg) coP[k]=coAgg[k].p/coAgg[k].n;
+  const vBuckets = { opt:{n:0,p:0,g:0}, acc:{n:0,p:0,g:0}, pes:{n:0,p:0,g:0} };
+  vInfo.forEach(b => {
+    const ecart = (scP[b.sc]||0) - (coP[b.cb]||0);
+    const k = ecart > 0.05 ? 'opt' : (ecart < -0.05 ? 'pes' : 'acc');
+    vBuckets[k].n++;
+    if(b.place){ vBuckets[k].p++; vBuckets[k].g += b.rap; }
+  });
+  const vRow = o => o.n ? {n:o.n, taux:Math.round(o.p/o.n*100), roi:((o.g-o.n)/o.n)*100} : {n:0,taux:0,roi:0};
+  const vOpt=vRow(vBuckets.opt), vAcc=vRow(vBuckets.acc), vPes=vRow(vBuckets.pes);
+
   // Graphique SVG
   const W=1000, H=300, padT=14, padB=14, padL=6, padR=6;
   const rng = (maxV - minV) || 1;
@@ -684,6 +713,22 @@ function updateAnalyse() {
       <div style="font-size:10px;color:var(--muted);margin-bottom:5px">Tu contredis le marché — terrain de la valeur</div>
       ${segHead}${renderSegRows(segData.nonfav)}
       <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">💡 Test décisif : le segment « non-favori » est-il positif ET tient-il en 2025 ? Si oui (avec assez de courses), tu tiens un edge structurel — la valeur vient du désaccord. Sinon, ni favori ni non-favori ne donne de valeur durable.</div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px">Squelette « valeur » : ton score vs le marché <span style="font-size:11px;color:var(--muted);font-weight:400">(route 2)</span></div>
+      <div style="font-size:11px;color:var(--dim);margin-bottom:8px;line-height:1.5">Pour chaque C1, on compare le placement attendu par ton <b>score</b> à celui attendu par sa <b>cote</b>. « Score &gt; marché » = ton modèle l'aime PLUS que le marché → c'est là que la valeur peut vivre, si elle existe.</div>
+      <div style="display:grid;grid-template-columns:1.7fr 0.7fr 0.8fr 0.9fr;gap:4px;font-size:10px;color:var(--muted);font-weight:600;text-align:right;border-bottom:1px solid var(--border);padding-bottom:5px;margin-bottom:2px"><div style="text-align:left">Divergence</div><div>Courses</div><div>Placé</div><div>ROI</div></div>
+      ${[['🎯 Score &gt; marché (value)',vOpt],['Accord avec le marché',vAcc],['Score &lt; marché',vPes]].map(pair=>{
+        const lbl=pair[0], r=pair[1];
+        const roiCol=r.roi>3?'var(--green)':(r.roi>=0?'var(--orange)':'var(--red)');
+        return `<div style="display:grid;grid-template-columns:1.7fr 0.7fr 0.8fr 0.9fr;gap:4px;font-size:12px;text-align:right;padding:6px 0;border-bottom:1px solid var(--border);align-items:center">
+          <div style="text-align:left;font-weight:600">${lbl}</div>
+          <div style="font-family:var(--mono);color:var(--muted)">${r.n}</div>
+          <div style="font-family:var(--mono)">${r.taux}%</div>
+          <div style="font-family:var(--mono);font-weight:700;color:${roiCol}">${r.roi>=0?'+':''}${r.roi.toFixed(1)}%</div>
+        </div>`;
+      }).join('')}
+      <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">💡 Si « Score &gt; marché » est en ROI positif, ton modèle apporte une info que le prix n'a pas → l'amorce d'un vrai edge. S'il est nul/négatif, ton score est redondant avec la cote. ⚠️ Calibration in-sample = diagnostic, pas preuve ; et comme ton score s'appuie sur le favori, l'écart sera sans doute faible.</div>
     </div>`;
 
   // ── Interaction tactile : curseur vertical + point + infobulle ──
