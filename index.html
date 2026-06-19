@@ -537,6 +537,42 @@ function updateAnalyse() {
   });
   const years410 = Object.keys(yr410).sort();
 
+  // ── C1 favori vs non-favori, par année : où vit l'edge ? ──
+  const segData = { fav:{}, nonfav:{} };
+  bets.forEach(a => {
+    const c1 = (a.top3||[])[0];
+    if (!c1) return;
+    const ch = (a.chevaux||[]).find(x => x.numero === c1.numero);
+    const estFav = !!(ch && (ch.criteres||[]).includes('Favori du marché'));
+    const k = estFav ? 'fav' : 'nonfav';
+    const ym = (a.date||'').match(/\/(\d{4})$/);
+    const yr = ym ? ym[1] : '?';
+    if (!segData[k][yr]) segData[k][yr] = {courses:0, places:0, gain:0};
+    const arr = (a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
+    const place = arr.slice(0,3).includes(c1.numero);
+    segData[k][yr].courses++;
+    if (place) {
+      segData[k][yr].places++;
+      const r = lireRapport(a, 'SIMPLE_PLACE', String(c1.numero));
+      if (r && r > 0) segData[k][yr].gain += r;
+    }
+  });
+  const segYears = [...new Set([...Object.keys(segData.fav), ...Object.keys(segData.nonfav)])].sort();
+  const renderSegRows = (obj) => segYears.map(yr=>{
+    const d = obj[yr];
+    if (!d || !d.courses) return '';
+    const taux = Math.round(d.places/d.courses*100);
+    const roi = ((d.gain - d.courses)/d.courses)*100;
+    const roiCol = roi>3?'var(--green)':(roi>=0?'var(--orange)':'var(--red)');
+    return `<div style="display:grid;grid-template-columns:0.8fr 0.9fr 1fr 1fr;gap:4px;font-size:13px;text-align:center;padding:6px 0;border-bottom:1px solid var(--border);align-items:center">
+      <div style="text-align:left;font-weight:700;color:var(--gold)">${yr}</div>
+      <div style="font-family:var(--mono);color:var(--muted)">${d.courses}</div>
+      <div style="font-family:var(--mono)">${taux}%</div>
+      <div style="font-family:var(--mono);font-weight:700;color:${roiCol}">${roi>=0?'+':''}${roi.toFixed(1)}%</div>
+    </div>`;
+  }).join('');
+  const segHead = `<div style="display:grid;grid-template-columns:0.8fr 0.9fr 1fr 1fr;gap:4px;font-size:10px;color:var(--muted);font-weight:600;text-align:center;border-bottom:1px solid var(--border);padding-bottom:5px;margin-bottom:2px"><div style="text-align:left">Année</div><div>Courses</div><div>Taux placé</div><div>ROI flat</div></div>`;
+
   // Graphique SVG
   const W=1000, H=300, padT=14, padB=14, padL=6, padR=6;
   const rng = (maxV - minV) || 1;
@@ -637,6 +673,17 @@ function updateAnalyse() {
       <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">
         💡 Échantillons plus petits (cote 4-10 seule) → plus de variance. Regarde la tendance vs le tableau au-dessus : si 2025 est positif ici alors qu'il était nul là-haut, la poche est robuste.
       </div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px">C1 favori vs non-favori, par année <span style="font-size:11px;color:var(--muted);font-weight:400">(où vit l'edge ?)</span></div>
+      <div style="font-size:11px;color:var(--dim);margin-bottom:8px;line-height:1.5">5-7 pts, cote &lt;10. Quand C1 = favori, tu suis le marché → pas de valeur attendue. Quand C1 ≠ favori, tu le contredis → seul endroit où une vraie valeur peut exister.</div>
+      <div style="font-size:12px;font-weight:700;margin:6px 0 1px;color:#fff">C1 = favori du marché</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:5px">Tu es d'accord avec le marché</div>
+      ${segHead}${renderSegRows(segData.fav)}
+      <div style="font-size:12px;font-weight:700;margin:16px 0 1px;color:#fff">C1 ≠ favori</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:5px">Tu contredis le marché — terrain de la valeur</div>
+      ${segHead}${renderSegRows(segData.nonfav)}
+      <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">💡 Test décisif : le segment « non-favori » est-il positif ET tient-il en 2025 ? Si oui (avec assez de courses), tu tiens un edge structurel — la valeur vient du désaccord. Sinon, ni favori ni non-favori ne donne de valeur durable.</div>
     </div>`;
 
   // ── Interaction tactile : curseur vertical + point + infobulle ──
