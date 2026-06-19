@@ -602,6 +602,37 @@ function updateAnalyse() {
   const vRow = o => o.n ? {n:o.n, taux:Math.round(o.p/o.n*100), roi:((o.g-o.n)/o.n)*100} : {n:0,taux:0,roi:0};
   const vOpt=vRow(vBuckets.opt), vAcc=vRow(vBuckets.acc), vPes=vRow(vBuckets.pes);
 
+  // ── Test SPEED FIGURE : backer le cheval au meilleur chrono normalisé ──
+  const spdYr = {}, spdDivYr = {};
+  let spdCount = 0;
+  done.forEach(a => {
+    const sb = a.speedBest;
+    if (!sb || sb.numero == null) return;
+    spdCount++;
+    const ym = (a.date||'').match(/\/(\d{4})$/);
+    const yr = ym ? ym[1] : '?';
+    const arr = (a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
+    const place = arr.slice(0,3).includes(sb.numero);
+    const rap = place ? (lireRapport(a,'SIMPLE_PLACE',String(sb.numero))||0) : 0;
+    const add = obj => { if(!obj[yr]) obj[yr]={courses:0,places:0,gain:0}; obj[yr].courses++; if(place){obj[yr].places++; obj[yr].gain+=rap;} };
+    add(spdYr);
+    if (a.favNum != null && sb.numero !== a.favNum) add(spdDivYr);
+  });
+  const spdYears = [...new Set([...Object.keys(spdYr), ...Object.keys(spdDivYr)])].sort();
+  const spdRow = obj => spdYears.map(yr=>{
+    const d=obj[yr];
+    if(!d||!d.courses) return '';
+    const taux=Math.round(d.places/d.courses*100);
+    const roi=((d.gain-d.courses)/d.courses)*100;
+    const col=roi>3?'var(--green)':(roi>=0?'var(--orange)':'var(--red)');
+    return `<div style="display:grid;grid-template-columns:0.8fr 0.9fr 1fr 1fr;gap:4px;font-size:13px;text-align:center;padding:6px 0;border-bottom:1px solid var(--border);align-items:center">
+      <div style="text-align:left;font-weight:700;color:var(--gold)">${yr}</div>
+      <div style="font-family:var(--mono);color:var(--muted)">${d.courses}</div>
+      <div style="font-family:var(--mono)">${taux}%</div>
+      <div style="font-family:var(--mono);font-weight:700;color:${col}">${roi>=0?'+':''}${roi.toFixed(1)}%</div>
+    </div>`;
+  }).join('');
+
   // Graphique SVG
   const W=1000, H=300, padT=14, padB=14, padL=6, padR=6;
   const rng = (maxV - minV) || 1;
@@ -729,6 +760,14 @@ function updateAnalyse() {
         </div>`;
       }).join('')}
       <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">💡 Si « Score &gt; marché » est en ROI positif, ton modèle apporte une info que le prix n'a pas → l'amorce d'un vrai edge. S'il est nul/négatif, ton score est redondant avec la cote. ⚠️ Calibration in-sample = diagnostic, pas preuve ; et comme ton score s'appuie sur le favori, l'écart sera sans doute faible.</div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px">Prototype SPEED FIGURE — backer le meilleur chrono <span style="font-size:11px;color:var(--muted);font-weight:400">(route 2)</span></div>
+      <div style="font-size:11px;color:var(--dim);margin-bottom:8px;line-height:1.5">Pour chaque course, pari placé sur le cheval dont la vitesse normalisée (écart de RK au plus rapide, sur ses 6 dernières sorties) est la meilleure. Le test : rentable ? Et surtout quand ce cheval n'est <b>pas le favori</b> ?</div>
+      ${spdCount === 0
+        ? `<div style="font-size:12px;color:var(--orange);padding:8px 0;line-height:1.5">⚠️ Aucune donnée vitesse stockée pour l'instant. Il faut <b>re-backtester</b> pour que la speed figure soit calculée et enregistrée sur chaque course.</div>`
+        : `<div style="font-size:12px;font-weight:700;margin:6px 0 1px;color:#fff">Meilleur chrono — toutes courses</div>${segHead}${spdRow(spdYr)}<div style="font-size:12px;font-weight:700;margin:16px 0 1px;color:#fff">Meilleur chrono ≠ favori</div><div style="font-size:10px;color:var(--muted);margin-bottom:4px">Le chrono contredit le marché — terrain de la valeur</div>${segHead}${spdRow(spdDivYr)}<div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">💡 Si « ≠ favori » est positif ET tient sur les 3 ans, la vitesse normalisée porte une vraie info que le prix n'a pas — le premier signal route 2. Sinon, la vitesse est price-in elle aussi. ⚠️ Ce prototype mesure la vitesse vs les concurrents affrontés, sans tenir compte de la classe (allocation) — à affiner si le signal existe.</div>`
+      }
     </div>`;
 
   // ── Interaction tactile : curseur vertical + point + infobulle ──
@@ -1541,6 +1580,29 @@ async function lancerBacktest() {
           return (a.numPmu||a.numero||0)-(b.numPmu||b.numero||0);
         });
 
+        // ── SPEED FIGURE (prototype) : écart de RK au plus rapide de chaque course passée ──
+        // Normalisé "dans la course" (même piste/distance/terrain) → écart au meilleur chrono.
+        const calcSpeedFig = (p) => {
+          const courses = (p.coursesCourues || []).slice(0, 6);
+          const gaps = [];
+          courses.forEach(cc => {
+            const parts = cc.participants || [];
+            const rks = parts.map(x => parseInt(x.reductionKilometrique)||0).filter(v => v > 0);
+            if (!rks.length) return;
+            const best = Math.min(...rks);
+            const moi = parts.find(x => x.itsHim === true);
+            const myRk = moi ? (parseInt(moi.reductionKilometrique)||0) : 0;
+            if (myRk > 0) gaps.push(myRk - best); // 0 = aussi rapide que le meilleur de la course
+          });
+          if (gaps.length < 2) return 99999; // au moins 2 chronos pour établir une vitesse
+          return gaps.reduce((a,b)=>a+b,0)/gaps.length;
+        };
+        const coteOf = p => parseFloat(p.dernierRapportReference?.rapport || p.dernierRapportDirect?.rapport || 0) || 999;
+        let favNum=null, favCote=9999;
+        c.participants.forEach(p=>{ const ct=coteOf(p); if(ct>0 && ct<favCote){favCote=ct; favNum=p.numPmu;} });
+        const speedArr = c.participants.map(p=>({num:p.numPmu, fig:calcSpeedFig(p), cote:coteOf(p)})).filter(x=>x.fig<99999).sort((a,b)=>a.fig-b.fig);
+        const speedBest = speedArr.length ? {numero:speedArr[0].num, cote:(speedArr[0].cote>=999?null:speedArr[0].cote), fig:Math.round(speedArr[0].fig)} : null;
+
         const top3 = scored.slice(0,3).map(p=>({
           numero:p.numPmu, nom:p.nom, score:p.total,
           cote: parseFloat(p.dernierRapportReference?.rapport || p.dernierRapportDirect?.rapport || 0) || null
@@ -1570,6 +1632,7 @@ async function lancerBacktest() {
           hippodrome:c.hippodrome,
           isQuinte:c.isQuinte,
           top3,  // contient numero + cote de C1, C2, C3
+          favNum, speedBest,  // prototype route 2 : favori du marché + meilleur chrono normalisé
           chevaux:scored.map(p=>({
             numero:p.numPmu,
             criteres:p.pts.filter(x=>x.p>0).map(x=>x.l.split(' (')[0])
