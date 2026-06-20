@@ -474,22 +474,14 @@ function updateAnalyse() {
   let bk = capital0, runPeak = capital0, maxDD = 0, minV = capital0, maxV = capital0, nWin = 0;
   const traj = [capital0];
   const dates = ['Départ'];
-  // Staking pondéré par score : 1,5% (5 pts) / 2% (6 pts) / 3% (7 pts)
-  const scorePct = sc => sc>=7 ? 3 : (sc>=6 ? 2 : 1.5);
-  // Référence ÉQUITABLE : mise plate à la même mise MOYENNE que le pondéré → isole l'effet du tri, pas l'effet de levier
-  const avgPct = bets.reduce((s,a)=> s + scorePct(Math.round(((a.top3||[])[0]||{}).score||0)), 0) / bets.length;
-  let bkFlat = capital0;
   bets.forEach(a => {
-    const c1o = (a.top3||[])[0];
-    const c1 = c1o.numero;
-    const sc = Math.round(c1o.score);
+    const c1 = (a.top3||[])[0].numero;
     const arr = (a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
     const place = arr.slice(0,3).includes(c1);
     const r = place ? lireRapport(a, 'SIMPLE_PLACE', String(c1)) : null;
-    const mult = (place && r && r > 0) ? (r-1) : -1; // résultat par € misé
+    const mult = (place && r && r > 0) ? (r-1) : -1;
     if (place && r && r > 0) nWin++;
-    bk += (bk * (scorePct(sc)/100)) * mult;       // pondéré → pilote le graphe
-    bkFlat += (bkFlat * (avgPct/100)) * mult;     // plat équivalent (même mise moyenne)
+    bk += (bk * (pct/100)) * mult;
     traj.push(bk);
     dates.push(a.date);
     if (bk > runPeak) runPeak = bk;
@@ -498,7 +490,7 @@ function updateAnalyse() {
     const dd = runPeak > 0 ? (runPeak - bk)/runPeak : 0;
     if (dd > maxDD) maxDD = dd;
   });
-  const growthFlat = ((bkFlat - capital0)/capital0)*100;
+
 
   const growth = ((bk - capital0)/capital0)*100;
   const growthCol = growth >= 0 ? 'var(--green)' : 'var(--red)';
@@ -658,16 +650,6 @@ function updateAnalyse() {
           <div style="font-size:10px;color:var(--dim)">Drawdown max</div>
         </div>
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:12px">
-        <div style="flex:1;text-align:center;padding:8px 4px;background:var(--sf);border:1px solid var(--gold);border-radius:10px">
-          <div style="font-size:10px;color:var(--dim);margin-bottom:2px">Pondéré 1,5/2/3%</div>
-          <div style="font-family:var(--mono);font-size:15px;font-weight:700;color:${growth>=0?'var(--green)':'var(--red)'}">${growth>=0?'+':''}${growth.toFixed(1)}%</div>
-        </div>
-        <div style="flex:1;text-align:center;padding:8px 4px;background:var(--sf);border:1px solid var(--border);border-radius:10px">
-          <div style="font-size:10px;color:var(--dim);margin-bottom:2px">Plat équiv. ${avgPct.toFixed(1)}%</div>
-          <div style="font-family:var(--mono);font-size:15px;font-weight:700;color:${growthFlat>=0?'var(--green)':'var(--red)'}">${growthFlat>=0?'+':''}${growthFlat.toFixed(1)}%</div>
-        </div>
-      </div>
       <div id="bk-chart-wrap" style="position:relative;touch-action:none;user-select:none;-webkit-user-select:none">
         <svg id="bk-svg" viewBox="0 0 ${W} ${H}" width="100%" style="display:block;height:auto;border-radius:10px;background:var(--sf);border:1px solid var(--border)">
           <polygon points="${areaPts}" fill="${fillCol}" stroke="none"/>
@@ -693,7 +675,7 @@ function updateAnalyse() {
         <div>Plus bas : <b style="color:${minV<capital0?'var(--red)':'var(--text)'}">${fmt(minV)}€</b></div>
       </div>
       <div style="font-size:10px;color:var(--muted);margin-top:12px;font-style:italic">
-        Simulation : Simple Placé sur le C1, courses 5-7 points, cote &lt; 10, sur 2024-2026. Mise pondérée par le score — 1,5% (5 pts) · 2% (6 pts) · 3% (7 pts) du capital restant, intérêts composés. Comparée à une mise plate de ${pct}%.
+        Simulation : Simple Placé sur le C1, courses 5-7 points, cote &lt; 10, sur 2024-2026. Mise = ${pct}% du capital restant avant chaque pari (intérêts composés).
       </div>
     </div>
     <div class="card" style="margin-top:14px">
