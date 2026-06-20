@@ -470,31 +470,170 @@ function updateAnalyse() {
     return;
   }
 
-  // Simulation : mise = pct% du capital restant avant chaque pari (composé)
-  let bk = capital0, runPeak = capital0, maxDD = 0, minV = capital0, maxV = capital0, nWin = 0;
-  const traj = [capital0];
-  const dates = ['Départ'];
-  bets.forEach(a => {
-    const c1 = (a.top3||[])[0].numero;
-    const arr = (a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
-    const place = arr.slice(0,3).includes(c1);
-    const r = place ? lireRapport(a, 'SIMPLE_PLACE', String(c1)) : null;
-    const mult = (place && r && r > 0) ? (r-1) : -1;
-    if (place && r && r > 0) nWin++;
-    bk += (bk * (pct/100)) * mult;
-    traj.push(bk);
-    dates.push(a.date);
-    if (bk > runPeak) runPeak = bk;
-    if (bk > maxV) maxV = bk;
-    if (bk < minV) minV = bk;
-    const dd = runPeak > 0 ? (runPeak - bk)/runPeak : 0;
-    if (dd > maxDD) maxDD = dd;
-  });
-
-
-  const growth = ((bk - capital0)/capital0)*100;
-  const growthCol = growth >= 0 ? 'var(--green)' : 'var(--red)';
   const fmt = n => Math.round(n).toLocaleString('fr-FR');
+
+  // ── Types de paris (menu déroulant) ──
+  const BET_OPTS = [
+    ['C1_G','C1 gagnant'], ['C1_P','C1 placé'],
+    ['C2_G','C2 gagnant'], ['C2_P','C2 placé'],
+    ['C3_G','C3 gagnant'], ['C3_P','C3 placé'],
+    ['CG_12','Couplé gagnant 1-2'], ['CP_12','Couplé placé 1-2'],
+    ['CG_13','Couplé gagnant 1-3'], ['CP_13','Couplé placé 1-3'],
+    ['CG_23','Couplé gagnant 2-3'], ['CP_23','Couplé placé 2-3'],
+    ['S4','2 sur 4 : 1+2+3 (3 combi)']
+  ];
+  const BET_LABEL = Object.fromEntries(BET_OPTS);
+  const DEFAULT_BET = 'C1_P';
+
+  // Multiplicateur par course pour un type de pari (null = course non jouable → ignorée)
+  const betMult = (a, key) => {
+    const top = (a.top3||[]).map(p=>p.numero);
+    const arr = (a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
+    if (!arr.length) return null;
+    const c1=top[0], c2=top[1], c3=top[2];
+    const arr2=arr.slice(0,2), arr3=arr.slice(0,3);
+    const single=(h,type,win)=>{ if(h==null) return null; if(!win) return -1; const r=lireRapport(a,type,String(h)); return (r&&r>0)?r-1:null; };
+    const combo=(x,y,type,win)=>{ if(x==null||y==null) return null; if(!win) return -1; let r=lireRapport(a,type,x+'-'+y); if(r==null) r=lireRapport(a,type,y+'-'+x); return (r&&r>0)?r-1:null; };
+    switch(key){
+      case 'C1_G': return single(c1,'SIMPLE_GAGNANT', arr[0]===c1);
+      case 'C1_P': return single(c1,'SIMPLE_PLACE', arr3.includes(c1));
+      case 'C2_G': return single(c2,'SIMPLE_GAGNANT', c2!=null&&arr[0]===c2);
+      case 'C2_P': return single(c2,'SIMPLE_PLACE', c2!=null&&arr3.includes(c2));
+      case 'C3_G': return single(c3,'SIMPLE_GAGNANT', c3!=null&&arr[0]===c3);
+      case 'C3_P': return single(c3,'SIMPLE_PLACE', c3!=null&&arr3.includes(c3));
+      case 'CG_12': return combo(c1,c2,'COUPLE_GAGNANT', arr2.includes(c1)&&arr2.includes(c2));
+      case 'CP_12': return combo(c1,c2,'COUPLE_PLACE', arr3.includes(c1)&&arr3.includes(c2));
+      case 'CG_13': return combo(c1,c3,'COUPLE_GAGNANT', arr2.includes(c1)&&arr2.includes(c3));
+      case 'CP_13': return combo(c1,c3,'COUPLE_PLACE', arr3.includes(c1)&&arr3.includes(c3));
+      case 'CG_23': return combo(c2,c3,'COUPLE_GAGNANT', arr2.includes(c2)&&arr2.includes(c3));
+      case 'CP_23': return combo(c2,c3,'COUPLE_PLACE', arr3.includes(c2)&&arr3.includes(c3));
+      case 'S4': {
+        if (c2==null||c3==null) return null;
+        const bloc=(a.raps||[]).find(x=>x.t==='DEUX_SUR_QUATRE');
+        if(!bloc||!bloc.r) return null;
+        let sum=0;
+        [[c1,c2],[c1,c3],[c2,c3]].forEach(p=>{
+          const kk=[...p].sort((u,v)=>u-v).join('-');
+          bloc.r.forEach(rr=>{ const cm=String(rr.c||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n)).sort((u,v)=>u-v).join('-'); if(cm===kk) sum+=(parseFloat(rr.d)||0)/100; });
+        });
+        return sum/3 - 1; // mise = 3 combis, retour = somme des rapports gagnants
+      }
+    }
+    return null;
+  };
+
+  // Simulation composée pour un type de pari
+  const runSim = (key) => {
+    let bk=capital0, runPeak=capital0, maxDD=0, minV=capital0, maxV=capital0, nWin=0, nBets=0;
+    const traj=[capital0], dates=['Départ'];
+    bets.forEach(a => {
+      const mult = betMult(a, key);
+      if (mult == null) return;
+      nBets++;
+      bk += (bk*(pct/100))*mult;
+      if (mult > 0) nWin++;
+      traj.push(bk); dates.push(a.date);
+      if (bk>runPeak) runPeak=bk;
+      if (bk>maxV) maxV=bk;
+      if (bk<minV) minV=bk;
+      const dd = runPeak>0?(runPeak-bk)/runPeak:0; if(dd>maxDD) maxDD=dd;
+    });
+    return {bk, traj, dates, maxDD, minV, maxV, nWin, nBets, growth:((bk-capital0)/capital0)*100};
+  };
+
+  // Géométrie commune du graphe
+  const GW=1000, GH=300, gPadT=14, gPadB=14, gPadL=6, gPadR=6;
+  const geom = s => {
+    const rng=(s.maxV-s.minV)||1;
+    return {
+      xOf:i=>gPadL+(i/Math.max(1,s.traj.length-1))*(GW-gPadL-gPadR),
+      yOf:v=>gPadT+(1-(v-s.minV)/rng)*(GH-gPadT-gPadB)
+    };
+  };
+
+  // Corps re-rendu (stats + courbe + détails) pour un résultat de simulation
+  const bkCardInner = (s, key) => {
+    const growth=s.growth, growthCol=growth>=0?'var(--green)':'var(--red)';
+    const {xOf,yOf}=geom(s);
+    let linePts=''; for(let i=0;i<s.traj.length;i++) linePts+=`${xOf(i).toFixed(1)},${yOf(s.traj[i]).toFixed(1)} `; linePts=linePts.trim();
+    const areaPts=`${gPadL},${GH-gPadB} ${linePts} ${GW-gPadR},${GH-gPadB}`;
+    const yCap=yOf(capital0).toFixed(1);
+    const lineCol=s.bk>=capital0?'#1a9d52':'#c83232';
+    const fillCol=s.bk>=capital0?'rgba(26,157,82,0.12)':'rgba(200,50,50,0.12)';
+    const reuss=s.nBets>0?Math.round(s.nWin/s.nBets*100):0;
+    const dStart=s.dates.length>1?s.dates[1]:'—', dEnd=s.dates.length>1?s.dates[s.dates.length-1]:'—';
+    if(s.nBets===0) return `<div style="text-align:center;color:var(--orange);padding:24px;font-size:13px">Aucune course jouable pour « ${BET_LABEL[key]} »<br><span style="font-size:11px;color:var(--muted)">(rapports manquants, ou C2/C3 absents dans la sélection)</span></div>`;
+    return `
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <div style="flex:1;text-align:center;padding:10px 4px;background:${growth>=0?'var(--greenb)':'var(--redb)'};border-radius:10px">
+          <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:${growthCol}">${fmt(s.bk)}€</div>
+          <div style="font-size:10px;color:var(--dim)">Capital final</div>
+        </div>
+        <div style="flex:1;text-align:center;padding:10px 4px;background:var(--sf);border:1px solid var(--border);border-radius:10px">
+          <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:${growthCol}">${growth>=0?'+':''}${growth.toFixed(0)}%</div>
+          <div style="font-size:10px;color:var(--dim)">Croissance</div>
+        </div>
+        <div style="flex:1;text-align:center;padding:10px 4px;background:var(--sf);border:1px solid var(--border);border-radius:10px">
+          <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--red)">−${(s.maxDD*100).toFixed(0)}%</div>
+          <div style="font-size:10px;color:var(--dim)">Drawdown max</div>
+        </div>
+      </div>
+      <div id="bk-chart-wrap" style="position:relative;touch-action:none;user-select:none;-webkit-user-select:none">
+        <svg id="bk-svg" viewBox="0 0 ${GW} ${GH}" width="100%" style="display:block;height:auto;border-radius:10px;background:var(--sf);border:1px solid var(--border)">
+          <polygon points="${areaPts}" fill="${fillCol}" stroke="none"/>
+          <line x1="${gPadL}" y1="${yCap}" x2="${GW-gPadR}" y2="${yCap}" stroke="var(--muted)" stroke-dasharray="7 5" stroke-width="1" opacity="0.7"/>
+          <polyline points="${linePts}" fill="none" stroke="${lineCol}" stroke-width="2.5" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
+        </svg>
+        <div id="bk-vline" style="position:absolute;top:0;width:1.5px;background:var(--gold);opacity:0;pointer-events:none"></div>
+        <div id="bk-dot" style="position:absolute;width:10px;height:10px;border-radius:50%;background:${lineCol};border:2px solid #fff;box-shadow:0 0 0 1.5px ${lineCol};opacity:0;pointer-events:none;transform:translate(-50%,-50%)"></div>
+        <div id="bk-tip" style="position:absolute;top:6px;background:var(--text);color:#fff;padding:5px 10px;border-radius:8px;font-size:11px;font-family:var(--mono);white-space:nowrap;pointer-events:none;opacity:0;transform:translateX(-50%);box-shadow:0 2px 8px rgba(0,0,0,.25);z-index:5"></div>
+      </div>
+      <div style="text-align:center;font-size:10px;color:var(--muted);margin-top:6px;font-style:italic">👆 Glisse ton doigt sur la courbe pour voir la date et le montant</div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:6px">
+        <span>${dStart}</span><span style="font-style:italic">— — capital de départ</span><span>${dEnd}</span>
+      </div>
+      <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
+        <div>Paris simulés : <b>${s.nBets}</b></div>
+        <div>Réussite : <b>${reuss}%</b></div>
+        <div>Plus haut : <b style="color:var(--green)">${fmt(s.maxV)}€</b></div>
+        <div>Plus bas : <b style="color:${s.minV<capital0?'var(--red)':'var(--text)'}">${fmt(s.minV)}€</b></div>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:12px;font-style:italic">
+        Pari : <b>${BET_LABEL[key]}</b> sur ta sélection (5-7 pts, cote &lt;10), 2024-2026. Mise = ${pct}% du capital restant, intérêts composés.
+      </div>`;
+  };
+
+  // (Ré)attache le curseur tactile au graphe courant
+  const bindBkChart = (s) => {
+    const {xOf,yOf}=geom(s);
+    const svg=document.getElementById('bk-svg'), wrap=document.getElementById('bk-chart-wrap'),
+          vline=document.getElementById('bk-vline'), dot=document.getElementById('bk-dot'), tip=document.getElementById('bk-tip');
+    if(!(svg&&wrap&&vline&&dot&&tip)) return;
+    const showAt = clientX => {
+      const rect = svg.getBoundingClientRect();
+      if (!rect.width) return;
+      let frac = (clientX - rect.left) / rect.width; frac = Math.max(0, Math.min(1, frac));
+      const idx = Math.round(frac * (s.traj.length - 1));
+      const xPx = (xOf(idx) / GW) * rect.width, yPx = (yOf(s.traj[idx]) / GH) * rect.height;
+      vline.style.height = rect.height + 'px'; vline.style.left = xPx + 'px'; vline.style.opacity = '1';
+      dot.style.left = xPx + 'px'; dot.style.top = yPx + 'px'; dot.style.opacity = '1';
+      tip.innerHTML = `${s.dates[idx]} · <b>${fmt(s.traj[idx])}€</b>`; tip.style.opacity = '1';
+      let tx = xPx; const tw = tip.offsetWidth;
+      if (tx - tw/2 < 2) tx = tw/2 + 2; else if (tx + tw/2 > rect.width - 2) tx = rect.width - tw/2 - 2;
+      tip.style.left = tx + 'px';
+    };
+    wrap.addEventListener('pointerdown', e => showAt(e.clientX));
+    wrap.addEventListener('pointermove', e => showAt(e.clientX));
+  };
+
+  // Re-rendu complet sur changement de menu
+  const renderBkSim = (key) => {
+    const s = runSim(key);
+    const body = document.getElementById('bk-sim-body');
+    if (body) { body.innerHTML = bkCardInner(s, key); bindBkChart(s); }
+  };
+
+  const initialSim = runSim(DEFAULT_BET);
 
   // ROI flat par année (1€/course) sur le MÊME sous-ensemble — isole l'edge pur
   const yrData = {};
@@ -621,62 +760,13 @@ function updateAnalyse() {
     </div>`;
   }).join('');
 
-  // Graphique SVG
-  const W=1000, H=300, padT=14, padB=14, padL=6, padR=6;
-  const rng = (maxV - minV) || 1;
-  const xOf = i => padL + (i/(traj.length-1))*(W-padL-padR);
-  const yOf = v => padT + (1-(v-minV)/rng)*(H-padT-padB);
-  let linePts = '';
-  for (let i=0;i<traj.length;i++) linePts += `${xOf(i).toFixed(1)},${yOf(traj[i]).toFixed(1)} `;
-  linePts = linePts.trim();
-  const areaPts = `${padL},${H-padB} ${linePts} ${W-padR},${H-padB}`;
-  const yCap = yOf(capital0).toFixed(1);
-  const lineCol = bk >= capital0 ? '#1a9d52' : '#c83232';
-  const fillCol = bk >= capital0 ? 'rgba(26,157,82,0.12)' : 'rgba(200,50,50,0.12)';
-
   el.innerHTML = `
     <div class="card" style="margin-bottom:14px">
-      <div style="display:flex;gap:8px;margin-bottom:14px">
-        <div style="flex:1;text-align:center;padding:10px 4px;background:${growth>=0?'var(--greenb)':'var(--redb)'};border-radius:10px">
-          <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:${growthCol}">${fmt(bk)}€</div>
-          <div style="font-size:10px;color:var(--dim)">Capital final</div>
-        </div>
-        <div style="flex:1;text-align:center;padding:10px 4px;background:var(--sf);border:1px solid var(--border);border-radius:10px">
-          <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:${growthCol}">${growth>=0?'+':''}${growth.toFixed(0)}%</div>
-          <div style="font-size:10px;color:var(--dim)">Croissance</div>
-        </div>
-        <div style="flex:1;text-align:center;padding:10px 4px;background:var(--sf);border:1px solid var(--border);border-radius:10px">
-          <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--red)">−${(maxDD*100).toFixed(0)}%</div>
-          <div style="font-size:10px;color:var(--dim)">Drawdown max</div>
-        </div>
-      </div>
-      <div id="bk-chart-wrap" style="position:relative;touch-action:none;user-select:none;-webkit-user-select:none">
-        <svg id="bk-svg" viewBox="0 0 ${W} ${H}" width="100%" style="display:block;height:auto;border-radius:10px;background:var(--sf);border:1px solid var(--border)">
-          <polygon points="${areaPts}" fill="${fillCol}" stroke="none"/>
-          <line x1="${padL}" y1="${yCap}" x2="${W-padR}" y2="${yCap}" stroke="var(--muted)" stroke-dasharray="7 5" stroke-width="1" opacity="0.7"/>
-          <polyline points="${linePts}" fill="none" stroke="${lineCol}" stroke-width="2.5" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
-        </svg>
-        <div id="bk-vline" style="position:absolute;top:0;width:1.5px;background:var(--gold);opacity:0;pointer-events:none"></div>
-        <div id="bk-dot" style="position:absolute;width:10px;height:10px;border-radius:50%;background:${lineCol};border:2px solid #fff;box-shadow:0 0 0 1.5px ${lineCol};opacity:0;pointer-events:none;transform:translate(-50%,-50%)"></div>
-        <div id="bk-tip" style="position:absolute;top:6px;background:var(--text);color:#fff;padding:5px 10px;border-radius:8px;font-size:11px;font-family:var(--mono);white-space:nowrap;pointer-events:none;opacity:0;transform:translateX(-50%);box-shadow:0 2px 8px rgba(0,0,0,.25);z-index:5"></div>
-      </div>
-      <div style="text-align:center;font-size:10px;color:var(--muted);margin-top:6px;font-style:italic">👆 Glisse ton doigt sur la courbe pour voir la date et le montant</div>
-      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:6px">
-        <span>${bets[0].date}</span>
-        <span style="font-style:italic">— — capital de départ</span>
-        <span>${bets[bets.length-1].date}</span>
-      </div>
-    </div>
-    <div class="card">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
-        <div>Paris simulés : <b>${bets.length}</b></div>
-        <div>Réussite : <b>${Math.round(nWin/bets.length*100)}%</b></div>
-        <div>Plus haut : <b style="color:var(--green)">${fmt(maxV)}€</b></div>
-        <div>Plus bas : <b style="color:${minV<capital0?'var(--red)':'var(--text)'}">${fmt(minV)}€</b></div>
-      </div>
-      <div style="font-size:10px;color:var(--muted);margin-top:12px;font-style:italic">
-        Simulation : Simple Placé sur le C1, courses 5-7 points, cote &lt; 10, sur 2024-2026. Mise = ${pct}% du capital restant avant chaque pari (intérêts composés).
-      </div>
+      <label style="display:block;font-size:11px;color:var(--dim);margin-bottom:6px;font-weight:600">Type de pari</label>
+      <select id="bk-bet" style="width:100%;padding:11px 12px;font-size:15px;border-radius:10px;border:1px solid var(--border);background:var(--sf);color:var(--text);font-family:inherit;-webkit-appearance:none;appearance:none;margin-bottom:14px">
+        ${BET_OPTS.map(([v,l])=>`<option value="${v}"${v===DEFAULT_BET?' selected':''}>${l}</option>`).join('')}
+      </select>
+      <div id="bk-sim-body">${bkCardInner(initialSim, DEFAULT_BET)}</div>
     </div>
     <div class="card" style="margin-top:14px">
       <div style="font-size:13px;font-weight:600;margin-bottom:4px">ROI à plat par année <span style="font-size:11px;color:var(--muted);font-weight:400">(edge pur, sans effet de mise)</span></div>
@@ -741,38 +831,10 @@ function updateAnalyse() {
       <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">⚠️ n&lt;20 (grisé) = trop peu de courses, ignore. Une tranche n'est exploitable que si elle est positive ET stable d'année en année. Rappel : aucun tri ne crée d'edge — au mieux il limite la casse vers le plancher du prélèvement.</div>
     </div>`;
 
-  // ── Interaction tactile : curseur vertical + point + infobulle ──
-  const svg = document.getElementById('bk-svg');
-  const wrap = document.getElementById('bk-chart-wrap');
-  const vline = document.getElementById('bk-vline');
-  const dot = document.getElementById('bk-dot');
-  const tip = document.getElementById('bk-tip');
-  if (svg && wrap && vline && dot && tip) {
-    const showAt = clientX => {
-      const rect = svg.getBoundingClientRect();
-      if (!rect.width) return;
-      let frac = (clientX - rect.left) / rect.width;
-      frac = Math.max(0, Math.min(1, frac));
-      const idx = Math.round(frac * (traj.length - 1));
-      const xPx = (xOf(idx) / W) * rect.width;
-      const yPx = (yOf(traj[idx]) / H) * rect.height;
-      vline.style.height = rect.height + 'px';
-      vline.style.left = xPx + 'px';
-      vline.style.opacity = '1';
-      dot.style.left = xPx + 'px';
-      dot.style.top = yPx + 'px';
-      dot.style.opacity = '1';
-      tip.innerHTML = `${dates[idx]} · <b>${fmt(traj[idx])}€</b>`;
-      tip.style.opacity = '1';
-      let tx = xPx;
-      const tw = tip.offsetWidth;
-      if (tx - tw/2 < 2) tx = tw/2 + 2;
-      else if (tx + tw/2 > rect.width - 2) tx = rect.width - tw/2 - 2;
-      tip.style.left = tx + 'px';
-    };
-    wrap.addEventListener('pointerdown', e => { showAt(e.clientX); });
-    wrap.addEventListener('pointermove', e => { showAt(e.clientX); });
-  }
+  // Câblage : curseur initial + menu déroulant qui réactualise le graphe
+  bindBkChart(initialSim);
+  const betSel = document.getElementById('bk-bet');
+  if (betSel) betSel.addEventListener('change', e => renderBkSim(e.target.value));
 }
 
 function goPage(name) {
