@@ -99,7 +99,7 @@ export default async function handler(req, res) {
                 avisEntraineur: p.avisEntraineur,
                 ordreArrivee: p.ordreArrivee,
                 dernierRapportReference: p.dernierRapportReference,
-                coursesCourues: (perfMap[p.nom] || []).slice(0, 3).map(c => ({
+                coursesCourues: (perfMap[p.nom] || []).slice(0, 6).map(c => ({
                   allocation: c.allocation,
                   hippodrome: c.hippodrome,
                   date: c.date,
@@ -109,7 +109,9 @@ export default async function handler(req, res) {
                   })(),
                   participants: (c.participants || []).map(x => ({
                     nomCheval: x.nomCheval,
-                    place: x.place?.place || null
+                    place: x.place?.place || null,
+                    reductionKilometrique: x.reductionKilometrique || null,
+                    itsHim: (x.nomCheval || '').toUpperCase() === (p.nom || '').toUpperCase()
                   }))
                 }))
               })),
