@@ -633,6 +633,56 @@ function updateAnalyse() {
     </div>`;
   }).join('');
 
+  // ── Tri par nombre de partants : ROI placé du C1 (ta sélection) par tranche × année ──
+  const fsBuckets = [
+    {key:'≤7', lo:0, hi:7, note:'placé top-2'},
+    {key:'8-11', lo:8, hi:11, note:''},
+    {key:'12-14', lo:12, hi:14, note:''},
+    {key:'15+', lo:15, hi:99, note:''}
+  ];
+  const fsBucketOf = n => fsBuckets.find(b => n>=b.lo && n<=b.hi) || fsBuckets[fsBuckets.length-1];
+  const fsData = {}; fsBuckets.forEach(b => fsData[b.key] = {});
+  const fsYearsSet = new Set();
+  bets.forEach(a => {
+    const c1 = (a.top3||[])[0].numero;
+    const fieldSize = a.partants || (a.chevaux||[]).length || 0;
+    if (!fieldSize) return;
+    const b = fsBucketOf(fieldSize);
+    const ym = (a.date||'').match(/\/(\d{4})$/);
+    const yr = ym ? ym[1] : '?';
+    fsYearsSet.add(yr);
+    const arr = (a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
+    const topN = fieldSize <= 7 ? 2 : 3; // règle PMU : placé top-2 si ≤7 partants, top-3 si ≥8
+    const placed = arr.slice(0, topN).includes(c1);
+    const rap = placed ? (lireRapport(a,'SIMPLE_PLACE',String(c1))||0) : 0;
+    if(!fsData[b.key][yr]) fsData[b.key][yr] = {courses:0,places:0,gain:0};
+    const cell = fsData[b.key][yr];
+    cell.courses++; if(placed){ cell.places++; cell.gain+=rap; }
+  });
+  const fsYears = [...fsYearsSet].sort();
+  const fsGridCols = `1.1fr ${fsYears.map(()=>'1fr').join(' ')}`;
+  const fsCell = (bk, yr) => {
+    const d = fsData[bk][yr];
+    if(!d || !d.courses) return `<div style="text-align:center;color:var(--border);font-family:var(--mono);font-size:12px">—</div>`;
+    const roi = ((d.gain-d.courses)/d.courses)*100;
+    const taux = Math.round(d.places/d.courses*100);
+    const thin = d.courses < 20;
+    const col = thin ? 'var(--muted)' : (roi>3?'var(--green)':(roi>=0?'var(--orange)':'var(--red)'));
+    return `<div style="text-align:center">
+      <div style="font-family:var(--mono);font-weight:700;font-size:13px;color:${col}">${roi>=0?'+':''}${roi.toFixed(0)}%</div>
+      <div style="font-size:9px;color:var(--muted)">${taux}% · n=${d.courses}${thin?'⚠️':''}</div>
+    </div>`;
+  };
+  const fsHeadCols = `<div></div>` + fsYears.map(y=>`<div style="text-align:center;font-weight:700;color:var(--gold);font-size:12px">${y}</div>`).join('');
+  const fsRows = fsBuckets.map(b => {
+    const has = fsYears.some(y => fsData[b.key][y] && fsData[b.key][y].courses);
+    if(!has) return '';
+    return `<div style="display:grid;grid-template-columns:${fsGridCols};gap:6px;padding:8px 0;border-bottom:1px solid var(--border);align-items:center">
+      <div style="font-size:12px"><span style="font-weight:700">${b.key}</span>${b.note?`<div style="font-size:9px;color:var(--muted)">${b.note}</div>`:''}</div>
+      ${fsYears.map(y=>fsCell(b.key,y)).join('')}
+    </div>`;
+  }).join('');
+
   // Graphique SVG
   const W=1000, H=300, padT=14, padB=14, padL=6, padR=6;
   const rng = (maxV - minV) || 1;
@@ -768,6 +818,13 @@ function updateAnalyse() {
         ? `<div style="font-size:12px;color:var(--orange);padding:8px 0;line-height:1.5">⚠️ Aucune donnée vitesse stockée pour l'instant. Il faut <b>re-backtester</b> pour que la speed figure soit calculée et enregistrée sur chaque course.</div>`
         : `<div style="font-size:12px;font-weight:700;margin:6px 0 1px;color:#fff">Meilleur chrono — toutes courses</div>${segHead}${spdRow(spdYr)}<div style="font-size:12px;font-weight:700;margin:16px 0 1px;color:#fff">Meilleur chrono ≠ favori</div><div style="font-size:10px;color:var(--muted);margin-bottom:4px">Le chrono contredit le marché — terrain de la valeur</div>${segHead}${spdRow(spdDivYr)}<div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">💡 Si « ≠ favori » est positif ET tient sur les 3 ans, la vitesse normalisée porte une vraie info que le prix n'a pas — le premier signal route 2. Sinon, la vitesse est price-in elle aussi. ⚠️ Ce prototype mesure la vitesse vs les concurrents affrontés, sans tenir compte de la classe (allocation) — à affiner si le signal existe.</div>`
       }
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px">Tri par nombre de partants — ROI placé du C1 <span style="font-size:11px;color:var(--muted);font-weight:400">(ta sélection 5-7 pts)</span></div>
+      <div style="font-size:11px;color:var(--dim);margin-bottom:10px;line-height:1.5">Le seul tri à base mécanique réelle : à ≤7 partants le placé ne paie que le top-2 et rapporte des miettes. Cherche une tranche verte <b>sur les 3 années</b> — sinon c'est du bruit.</div>
+      <div style="display:grid;grid-template-columns:${fsGridCols};gap:6px;padding-bottom:6px;border-bottom:2px solid var(--border)">${fsHeadCols}</div>
+      ${fsRows}
+      <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">⚠️ n&lt;20 (grisé) = trop peu de courses, ignore. Une tranche n'est exploitable que si elle est positive ET stable d'année en année. Rappel : aucun tri ne crée d'edge — au mieux il limite la casse vers le plancher du prélèvement.</div>
     </div>`;
 
   // ── Interaction tactile : curseur vertical + point + infobulle ──
@@ -1630,6 +1687,7 @@ async function lancerBacktest() {
           courseId:c.id,
           course:c.nom||c.hippodrome,
           hippodrome:c.hippodrome,
+          partants:c.partants,  // taille du champ — règle du placé (top-2 si ≤7, top-3 si ≥8)
           isQuinte:c.isQuinte,
           top3,  // contient numero + cote de C1, C2, C3
           favNum, speedBest,  // prototype route 2 : favori du marché + meilleur chrono normalisé
