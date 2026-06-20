@@ -525,20 +525,23 @@ function updateAnalyse() {
   // Simulation composée pour un type de pari
   const runSim = (key) => {
     let bk=capital0, runPeak=capital0, maxDD=0, minV=capital0, maxV=capital0, nWin=0, nBets=0;
-    const traj=[capital0], dates=['Départ'];
+    const traj=[capital0], dates=['Départ']; const perYear={};
     bets.forEach(a => {
       const mult = betMult(a, key);
       if (mult == null) return;
       nBets++;
       bk += (bk*(pct/100))*mult;
       if (mult > 0) nWin++;
+      const ym=(a.date||'').match(/\/(\d{4})$/); const yr=ym?ym[1]:'?';
+      if(!perYear[yr]) perYear[yr]={n:0,wins:0,roi:0};
+      perYear[yr].n++; perYear[yr].roi+=mult; if(mult>0) perYear[yr].wins++;
       traj.push(bk); dates.push(a.date);
       if (bk>runPeak) runPeak=bk;
       if (bk>maxV) maxV=bk;
       if (bk<minV) minV=bk;
       const dd = runPeak>0?(runPeak-bk)/runPeak:0; if(dd>maxDD) maxDD=dd;
     });
-    return {bk, traj, dates, maxDD, minV, maxV, nWin, nBets, growth:((bk-capital0)/capital0)*100};
+    return {bk, traj, dates, maxDD, minV, maxV, nWin, nBets, perYear, growth:((bk-capital0)/capital0)*100};
   };
 
   // Géométrie commune du graphe
@@ -598,8 +601,14 @@ function updateAnalyse() {
         <div>Plus haut : <b style="color:var(--green)">${fmt(s.maxV)}€</b></div>
         <div>Plus bas : <b style="color:${s.minV<capital0?'var(--red)':'var(--text)'}">${fmt(s.minV)}€</b></div>
       </div>
+      <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px">
+        <div style="font-size:12px;font-weight:600;margin-bottom:2px">ROI à plat par année <span style="font-size:10px;color:var(--muted);font-weight:400">— 1€/course, sans capitalisation</span></div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:8px">Le vrai verdict par année, lisible même quand la courbe composée s'écrase à 0.</div>
+        <div style="display:grid;grid-template-columns:0.8fr 0.9fr 1fr 1fr;gap:4px;font-size:10px;color:var(--muted);font-weight:600;text-align:center;border-bottom:1px solid var(--border);padding-bottom:5px;margin-bottom:2px"><div style="text-align:left">Année</div><div>Paris</div><div>Réussite</div><div>ROI flat</div></div>
+        ${Object.keys(s.perYear).sort().map(yr=>{ const d=s.perYear[yr]; const roi=d.n?(d.roi/d.n*100):0; const hit=d.n?Math.round(d.wins/d.n*100):0; const col=roi>3?'var(--green)':(roi>=0?'var(--orange)':'var(--red)'); return `<div style="display:grid;grid-template-columns:0.8fr 0.9fr 1fr 1fr;gap:4px;font-size:13px;text-align:center;padding:6px 0;border-bottom:1px solid var(--border);align-items:center"><div style="text-align:left;font-weight:700;color:var(--gold)">${yr}</div><div style="font-family:var(--mono);color:var(--muted)">${d.n}</div><div style="font-family:var(--mono)">${hit}%</div><div style="font-family:var(--mono);font-weight:700;color:${col}">${roi>=0?'+':''}${roi.toFixed(1)}%</div></div>`; }).join('')}
+      </div>
       <div style="font-size:10px;color:var(--muted);margin-top:12px;font-style:italic">
-        Pari : <b>${BET_LABEL[key]}</b> sur ta sélection (5-7 pts, cote &lt;10), 2024-2026. Mise = ${pct}% du capital restant, intérêts composés.
+        Pari : <b>${BET_LABEL[key]}</b> sur ta sélection (5-7 pts, cote &lt;10), 2024-2026. Courbe = mise ${pct}% du capital restant (composé) → s'écrase à 0 sur un pari perdant ; le tableau ci-dessus reste lisible.
       </div>`;
   };
 
