@@ -476,7 +476,9 @@ function updateAnalyse() {
   const dates = ['Départ'];
   // Staking pondéré par score : 1,5% (5 pts) / 2% (6 pts) / 3% (7 pts)
   const scorePct = sc => sc>=7 ? 3 : (sc>=6 ? 2 : 1.5);
-  let bkFlat = capital0; // comparaison : mise plate à pct%
+  // Référence ÉQUITABLE : mise plate à la même mise MOYENNE que le pondéré → isole l'effet du tri, pas l'effet de levier
+  const avgPct = bets.reduce((s,a)=> s + scorePct(Math.round(((a.top3||[])[0]||{}).score||0)), 0) / bets.length;
+  let bkFlat = capital0;
   bets.forEach(a => {
     const c1o = (a.top3||[])[0];
     const c1 = c1o.numero;
@@ -487,7 +489,7 @@ function updateAnalyse() {
     const mult = (place && r && r > 0) ? (r-1) : -1; // résultat par € misé
     if (place && r && r > 0) nWin++;
     bk += (bk * (scorePct(sc)/100)) * mult;       // pondéré → pilote le graphe
-    bkFlat += (bkFlat * (pct/100)) * mult;        // plat → référence
+    bkFlat += (bkFlat * (avgPct/100)) * mult;     // plat équivalent (même mise moyenne)
     traj.push(bk);
     dates.push(a.date);
     if (bk > runPeak) runPeak = bk;
@@ -576,65 +578,6 @@ function updateAnalyse() {
   }).join('');
   const segHead = `<div style="display:grid;grid-template-columns:0.8fr 0.9fr 1fr 1fr;gap:4px;font-size:10px;color:var(--muted);font-weight:600;text-align:center;border-bottom:1px solid var(--border);padding-bottom:5px;margin-bottom:2px"><div style="text-align:left">Année</div><div>Courses</div><div>Taux placé</div><div>ROI flat</div></div>`;
 
-  // ── Squelette VALUE : proba(score) vs proba(marché/cote) ──
-  // 1. calibrer score → taux placé empirique ; 2. cote → taux placé ; 3. bucketer par écart
-  const coteBucketOf = c => c<2.5?'<2.5':(c<4?'2.5-4':(c<6?'4-6':'6-10'));
-  const scAgg = {}, coAgg = {};
-  const vInfo = bets.map(a => {
-    const c1 = (a.top3||[])[0];
-    const sc = Math.round(c1.score);
-    const cb = coteBucketOf(c1.cote);
-    const arr = (a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
-    const place = arr.slice(0,3).includes(c1.numero);
-    const rap = place ? (lireRapport(a,'SIMPLE_PLACE',String(c1.numero))||0) : 0;
-    if(!scAgg[sc]) scAgg[sc]={n:0,p:0};
-    scAgg[sc].n++; if(place) scAgg[sc].p++;
-    if(!coAgg[cb]) coAgg[cb]={n:0,p:0};
-    coAgg[cb].n++; if(place) coAgg[cb].p++;
-    return {sc, cb, place, rap};
-  });
-  const scP = {}; for(const k in scAgg) scP[k]=scAgg[k].p/scAgg[k].n;
-  const coP = {}; for(const k in coAgg) coP[k]=coAgg[k].p/coAgg[k].n;
-  const vBuckets = { opt:{n:0,p:0,g:0}, acc:{n:0,p:0,g:0}, pes:{n:0,p:0,g:0} };
-  vInfo.forEach(b => {
-    const ecart = (scP[b.sc]||0) - (coP[b.cb]||0);
-    const k = ecart > 0.05 ? 'opt' : (ecart < -0.05 ? 'pes' : 'acc');
-    vBuckets[k].n++;
-    if(b.place){ vBuckets[k].p++; vBuckets[k].g += b.rap; }
-  });
-  const vRow = o => o.n ? {n:o.n, taux:Math.round(o.p/o.n*100), roi:((o.g-o.n)/o.n)*100} : {n:0,taux:0,roi:0};
-  const vOpt=vRow(vBuckets.opt), vAcc=vRow(vBuckets.acc), vPes=vRow(vBuckets.pes);
-
-  // ── Test SPEED FIGURE : backer le cheval au meilleur chrono normalisé ──
-  const spdYr = {}, spdDivYr = {};
-  let spdCount = 0;
-  done.forEach(a => {
-    const sb = a.speedBest;
-    if (!sb || sb.numero == null) return;
-    spdCount++;
-    const ym = (a.date||'').match(/\/(\d{4})$/);
-    const yr = ym ? ym[1] : '?';
-    const arr = (a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
-    const place = arr.slice(0,3).includes(sb.numero);
-    const rap = place ? (lireRapport(a,'SIMPLE_PLACE',String(sb.numero))||0) : 0;
-    const add = obj => { if(!obj[yr]) obj[yr]={courses:0,places:0,gain:0}; obj[yr].courses++; if(place){obj[yr].places++; obj[yr].gain+=rap;} };
-    add(spdYr);
-    if (a.favNum != null && sb.numero !== a.favNum) add(spdDivYr);
-  });
-  const spdYears = [...new Set([...Object.keys(spdYr), ...Object.keys(spdDivYr)])].sort();
-  const spdRow = obj => spdYears.map(yr=>{
-    const d=obj[yr];
-    if(!d||!d.courses) return '';
-    const taux=Math.round(d.places/d.courses*100);
-    const roi=((d.gain-d.courses)/d.courses)*100;
-    const col=roi>3?'var(--green)':(roi>=0?'var(--orange)':'var(--red)');
-    return `<div style="display:grid;grid-template-columns:0.8fr 0.9fr 1fr 1fr;gap:4px;font-size:13px;text-align:center;padding:6px 0;border-bottom:1px solid var(--border);align-items:center">
-      <div style="text-align:left;font-weight:700;color:var(--gold)">${yr}</div>
-      <div style="font-family:var(--mono);color:var(--muted)">${d.courses}</div>
-      <div style="font-family:var(--mono)">${taux}%</div>
-      <div style="font-family:var(--mono);font-weight:700;color:${col}">${roi>=0?'+':''}${roi.toFixed(1)}%</div>
-    </div>`;
-  }).join('');
 
   // ── Tri par nombre de partants : ROI placé du C1 (ta sélection) par tranche × année ──
   const fsBuckets = [
@@ -721,7 +664,7 @@ function updateAnalyse() {
           <div style="font-family:var(--mono);font-size:15px;font-weight:700;color:${growth>=0?'var(--green)':'var(--red)'}">${growth>=0?'+':''}${growth.toFixed(1)}%</div>
         </div>
         <div style="flex:1;text-align:center;padding:8px 4px;background:var(--sf);border:1px solid var(--border);border-radius:10px">
-          <div style="font-size:10px;color:var(--dim);margin-bottom:2px">Plat ${pct}% (réf.)</div>
+          <div style="font-size:10px;color:var(--dim);margin-bottom:2px">Plat équiv. ${avgPct.toFixed(1)}%</div>
           <div style="font-family:var(--mono);font-size:15px;font-weight:700;color:${growthFlat>=0?'var(--green)':'var(--red)'}">${growthFlat>=0?'+':''}${growthFlat.toFixed(1)}%</div>
         </div>
       </div>
@@ -807,30 +750,6 @@ function updateAnalyse() {
       <div style="font-size:10px;color:var(--muted);margin-bottom:5px">Tu contredis le marché — terrain de la valeur</div>
       ${segHead}${renderSegRows(segData.nonfav)}
       <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">💡 Test décisif : le segment « non-favori » est-il positif ET tient-il en 2025 ? Si oui (avec assez de courses), tu tiens un edge structurel — la valeur vient du désaccord. Sinon, ni favori ni non-favori ne donne de valeur durable.</div>
-    </div>
-    <div class="card" style="margin-top:14px">
-      <div style="font-size:13px;font-weight:600;margin-bottom:4px">Squelette « valeur » : ton score vs le marché <span style="font-size:11px;color:var(--muted);font-weight:400">(route 2)</span></div>
-      <div style="font-size:11px;color:var(--dim);margin-bottom:8px;line-height:1.5">Pour chaque C1, on compare le placement attendu par ton <b>score</b> à celui attendu par sa <b>cote</b>. « Score &gt; marché » = ton modèle l'aime PLUS que le marché → c'est là que la valeur peut vivre, si elle existe.</div>
-      <div style="display:grid;grid-template-columns:1.7fr 0.7fr 0.8fr 0.9fr;gap:4px;font-size:10px;color:var(--muted);font-weight:600;text-align:right;border-bottom:1px solid var(--border);padding-bottom:5px;margin-bottom:2px"><div style="text-align:left">Divergence</div><div>Courses</div><div>Placé</div><div>ROI</div></div>
-      ${[['🎯 Score &gt; marché (value)',vOpt],['Accord avec le marché',vAcc],['Score &lt; marché',vPes]].map(pair=>{
-        const lbl=pair[0], r=pair[1];
-        const roiCol=r.roi>3?'var(--green)':(r.roi>=0?'var(--orange)':'var(--red)');
-        return `<div style="display:grid;grid-template-columns:1.7fr 0.7fr 0.8fr 0.9fr;gap:4px;font-size:12px;text-align:right;padding:6px 0;border-bottom:1px solid var(--border);align-items:center">
-          <div style="text-align:left;font-weight:600">${lbl}</div>
-          <div style="font-family:var(--mono);color:var(--muted)">${r.n}</div>
-          <div style="font-family:var(--mono)">${r.taux}%</div>
-          <div style="font-family:var(--mono);font-weight:700;color:${roiCol}">${r.roi>=0?'+':''}${r.roi.toFixed(1)}%</div>
-        </div>`;
-      }).join('')}
-      <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">💡 Si « Score &gt; marché » est en ROI positif, ton modèle apporte une info que le prix n'a pas → l'amorce d'un vrai edge. S'il est nul/négatif, ton score est redondant avec la cote. ⚠️ Calibration in-sample = diagnostic, pas preuve ; et comme ton score s'appuie sur le favori, l'écart sera sans doute faible.</div>
-    </div>
-    <div class="card" style="margin-top:14px">
-      <div style="font-size:13px;font-weight:600;margin-bottom:4px">Prototype SPEED FIGURE — backer le meilleur chrono <span style="font-size:11px;color:var(--muted);font-weight:400">(route 2)</span></div>
-      <div style="font-size:11px;color:var(--dim);margin-bottom:8px;line-height:1.5">Pour chaque course, pari placé sur le cheval dont la vitesse normalisée (écart de RK au plus rapide, sur ses 6 dernières sorties) est la meilleure. Le test : rentable ? Et surtout quand ce cheval n'est <b>pas le favori</b> ?</div>
-      ${spdCount === 0
-        ? `<div style="font-size:12px;color:var(--orange);padding:8px 0;line-height:1.5">⚠️ Aucune donnée vitesse stockée pour l'instant. Il faut <b>re-backtester</b> pour que la speed figure soit calculée et enregistrée sur chaque course.</div>`
-        : `<div style="font-size:12px;font-weight:700;margin:6px 0 1px;color:#fff">Meilleur chrono — toutes courses</div>${segHead}${spdRow(spdYr)}<div style="font-size:12px;font-weight:700;margin:16px 0 1px;color:#fff">Meilleur chrono ≠ favori</div><div style="font-size:10px;color:var(--muted);margin-bottom:4px">Le chrono contredit le marché — terrain de la valeur</div>${segHead}${spdRow(spdDivYr)}<div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">💡 Si « ≠ favori » est positif ET tient sur les 3 ans, la vitesse normalisée porte une vraie info que le prix n'a pas — le premier signal route 2. Sinon, la vitesse est price-in elle aussi. ⚠️ Ce prototype mesure la vitesse vs les concurrents affrontés, sans tenir compte de la classe (allocation) — à affiner si le signal existe.</div>`
-      }
     </div>
     <div class="card" style="margin-top:14px">
       <div style="font-size:13px;font-weight:600;margin-bottom:4px">Tri par nombre de partants — ROI placé du C1 <span style="font-size:11px;color:var(--muted);font-weight:400">(ta sélection 5-7 pts)</span></div>
