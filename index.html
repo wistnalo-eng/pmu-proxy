@@ -549,15 +549,17 @@ function updateAnalyse() {
     return null;
   };
 
-  // Simulation composée pour un type de pari
-  const runSim = (key) => {
+  // Simulation pour un type de pari et un système de mise ('bk'=% capital composé, 'fixe'=mise constante)
+  const runSim = (key, mode) => {
+    const fixed = capital0*(pct/100);
     let bk=capital0, runPeak=capital0, maxDD=0, minV=capital0, maxV=capital0, nWin=0, nBets=0;
     const traj=[capital0], dates=['Départ']; const perYear={};
     bets.forEach(a => {
       const mult = betMult(a, key);
       if (mult == null) return;
       nBets++;
-      bk += (bk*(pct/100))*mult;
+      const stake = mode==='fixe' ? fixed : bk*(pct/100);
+      bk += stake * mult;
       if (mult > 0) nWin++;
       const ym=(a.date||'').match(/\/(\d{4})$/); const yr=ym?ym[1]:'?';
       if(!perYear[yr]) perYear[yr]={n:0,wins:0,roi:0};
@@ -582,7 +584,7 @@ function updateAnalyse() {
   };
 
   // Corps re-rendu (stats + courbe + détails) pour un résultat de simulation
-  const bkCardInner = (s, key) => {
+  const bkCardInner = (s, key, mode) => {
     const growth=s.growth, growthCol=growth>=0?'var(--green)':'var(--red)';
     const {xOf,yOf}=geom(s);
     let linePts=''; for(let i=0;i<s.traj.length;i++) linePts+=`${xOf(i).toFixed(1)},${yOf(s.traj[i]).toFixed(1)} `; linePts=linePts.trim();
@@ -604,7 +606,7 @@ function updateAnalyse() {
           <div style="font-size:10px;color:var(--dim)">Croissance</div>
         </div>
         <div style="flex:1;text-align:center;padding:10px 4px;background:var(--sf);border:1px solid var(--border);border-radius:10px">
-          <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--red)">−${(s.maxDD*100).toFixed(0)}%</div>
+          <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--red)">−${Math.min(100,s.maxDD*100).toFixed(0)}%</div>
           <div style="font-size:10px;color:var(--dim)">Drawdown max</div>
         </div>
       </div>
@@ -635,7 +637,9 @@ function updateAnalyse() {
         ${Object.keys(s.perYear).sort().map(yr=>{ const d=s.perYear[yr]; const roi=d.n?(d.roi/d.n*100):0; const hit=d.n?Math.round(d.wins/d.n*100):0; const col=roi>3?'var(--green)':(roi>=0?'var(--orange)':'var(--red)'); return `<div style="display:grid;grid-template-columns:0.8fr 0.9fr 1fr 1fr;gap:4px;font-size:13px;text-align:center;padding:6px 0;border-bottom:1px solid var(--border);align-items:center"><div style="text-align:left;font-weight:700;color:var(--gold)">${yr}</div><div style="font-family:var(--mono);color:var(--muted)">${d.n}</div><div style="font-family:var(--mono)">${hit}%</div><div style="font-family:var(--mono);font-weight:700;color:${col}">${roi>=0?'+':''}${roi.toFixed(1)}%</div></div>`; }).join('')}
       </div>
       <div style="font-size:10px;color:var(--muted);margin-top:12px;font-style:italic">
-        Pari : <b>${BET_LABEL[key]}</b> sur ta sélection (5-7 pts, cote &lt;10), 2024-2026. Courbe = mise ${pct}% du capital restant (composé) → s'écrase à 0 sur un pari perdant ; le tableau ci-dessus reste lisible.
+        Pari : <b>${BET_LABEL[key]}</b> sur ta sélection (5-7 pts, cote &lt;10), 2024-2026. ${mode==='fixe'
+          ? `Mise <b>fixe</b> = ${pct}% du capital de départ (${fmt(capital0*(pct/100))}€/course, constante) → courbe = profit cumulé, peut passer sous 0 (perte au-delà de la bankroll).`
+          : `Mise <b>% du capital restant</b> (composé) → s'écrase vers 0 sur un pari perdant.`} Le tableau par année reste lisible dans les deux cas.
       </div>`;
   };
 
@@ -662,14 +666,15 @@ function updateAnalyse() {
     wrap.addEventListener('pointermove', e => showAt(e.clientX));
   };
 
-  // Re-rendu complet sur changement de menu
-  const renderBkSim = (key) => {
-    const s = runSim(key);
+  // État courant (pari + système de mise) et re-rendu
+  let curBet = DEFAULT_BET, stakeMode = 'bk';
+  const renderBkSim = () => {
+    const s = runSim(curBet, stakeMode);
     const body = document.getElementById('bk-sim-body');
-    if (body) { body.innerHTML = bkCardInner(s, key); bindBkChart(s); }
+    if (body) { body.innerHTML = bkCardInner(s, curBet, stakeMode); bindBkChart(s); }
   };
 
-  const initialSim = runSim(DEFAULT_BET);
+  const initialSim = runSim(DEFAULT_BET, 'bk');
 
   // ROI flat par année (1€/course) sur le MÊME sous-ensemble — isole l'edge pur
   const yrData = {};
@@ -799,10 +804,15 @@ function updateAnalyse() {
   el.innerHTML = `
     <div class="card" style="margin-bottom:14px">
       <label style="display:block;font-size:11px;color:var(--dim);margin-bottom:6px;font-weight:600">Type de pari</label>
-      <select id="bk-bet" style="width:100%;padding:11px 12px;font-size:15px;border-radius:10px;border:1px solid var(--border);background:var(--sf);color:var(--text);font-family:inherit;-webkit-appearance:none;appearance:none;margin-bottom:14px">
+      <select id="bk-bet" style="width:100%;padding:11px 12px;font-size:15px;border-radius:10px;border:1px solid var(--border);background:var(--sf);color:var(--text);font-family:inherit;-webkit-appearance:none;appearance:none;margin-bottom:12px">
         ${BET_OPTS.map(([v,l])=>`<option value="${v}"${v===DEFAULT_BET?' selected':''}>${l}</option>`).join('')}
       </select>
-      <div id="bk-sim-body">${bkCardInner(initialSim, DEFAULT_BET)}</div>
+      <label style="display:block;font-size:11px;color:var(--dim);margin-bottom:6px;font-weight:600">Système de mise</label>
+      <select id="bk-mode" style="width:100%;padding:11px 12px;font-size:15px;border-radius:10px;border:1px solid var(--border);background:var(--sf);color:var(--text);font-family:inherit;-webkit-appearance:none;appearance:none;margin-bottom:14px">
+        <option value="bk" selected>Mise % du capital (composé)</option>
+        <option value="fixe">Mise fixe (constante)</option>
+      </select>
+      <div id="bk-sim-body">${bkCardInner(initialSim, DEFAULT_BET, 'bk')}</div>
     </div>
     <div class="card" style="margin-top:14px">
       <div style="font-size:13px;font-weight:600;margin-bottom:4px">ROI à plat par année <span style="font-size:11px;color:var(--muted);font-weight:400">(edge pur, sans effet de mise)</span></div>
@@ -867,10 +877,12 @@ function updateAnalyse() {
       <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">⚠️ n&lt;20 (grisé) = trop peu de courses, ignore. Une tranche n'est exploitable que si elle est positive ET stable d'année en année. Rappel : aucun tri ne crée d'edge — au mieux il limite la casse vers le plancher du prélèvement.</div>
     </div>`;
 
-  // Câblage : curseur initial + menu déroulant qui réactualise le graphe
+  // Câblage : curseur initial + les deux menus (pari + système de mise)
   bindBkChart(initialSim);
   const betSel = document.getElementById('bk-bet');
-  if (betSel) betSel.addEventListener('change', e => renderBkSim(e.target.value));
+  if (betSel) betSel.addEventListener('change', e => { curBet = e.target.value; renderBkSim(); });
+  const modeSel = document.getElementById('bk-mode');
+  if (modeSel) modeSel.addEventListener('change', e => { stakeMode = e.target.value; renderBkSim(); });
 }
 
 function goPage(name) {
