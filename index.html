@@ -480,7 +480,13 @@ function updateAnalyse() {
     ['CG_12','Couplé gagnant 1-2'], ['CP_12','Couplé placé 1-2'],
     ['CG_13','Couplé gagnant 1-3'], ['CP_13','Couplé placé 1-3'],
     ['CG_23','Couplé gagnant 2-3'], ['CP_23','Couplé placé 2-3'],
-    ['S4','2 sur 4 : 1+2+3 (3 combi)']
+    ['S4','2 sur 4 : 1+2+3 (3 combi)'],
+    ['CGB_4','Couplé G. combiné 4 ch (6 combis)'],
+    ['CGB_5','Couplé G. combiné 5 ch (10 combis)'],
+    ['CPB_4','Couplé P. combiné 4 ch (6 combis)'],
+    ['CPB_5','Couplé P. combiné 5 ch (10 combis)'],
+    ['S4B_3','2sur4 combiné 3 ch (3 combis)'],
+    ['S4B_4','2sur4 combiné 4 ch (6 combis)']
   ];
   const BET_LABEL = Object.fromEntries(BET_OPTS);
   const DEFAULT_BET = 'C1_P';
@@ -491,9 +497,24 @@ function updateAnalyse() {
     const arr = (a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n));
     if (!arr.length) return null;
     const c1=top[0], c2=top[1], c3=top[2];
-    const arr2=arr.slice(0,2), arr3=arr.slice(0,3);
+    const arr2=arr.slice(0,2), arr3=arr.slice(0,3), arr4=arr.slice(0,4);
     const single=(h,type,win)=>{ if(h==null) return null; if(!win) return -1; const r=lireRapport(a,type,String(h)); return (r&&r>0)?r-1:null; };
     const combo=(x,y,type,win)=>{ if(x==null||y==null) return null; if(!win) return -1; let r=lireRapport(a,type,x+'-'+y); if(r==null) r=lireRapport(a,type,y+'-'+x); return (r&&r>0)?r-1:null; };
+    // Liste type = N premiers chevaux par score (chevaux est trié par score)
+    const poolN = N => { const ch=(a.chevaux||[]).map(x=>x.numero); return ch.length>=N ? ch.slice(0,N) : null; };
+    // Pari combiné (boxé) : toutes les paires de la liste ; mise = nb de combis ; retour = somme des rapports gagnants
+    const comboBox = (pool, type, inWin) => {
+      if (!pool || pool.length < 2) return null;
+      const pairs=[]; for(let i=0;i<pool.length;i++) for(let j=i+1;j<pool.length;j++) pairs.push([pool[i],pool[j]]);
+      const nC=pairs.length; let sum=0;
+      if (type==='DEUX_SUR_QUATRE'){
+        const bloc=(a.raps||[]).find(x=>x.t==='DEUX_SUR_QUATRE'); if(!bloc||!bloc.r) return null;
+        pairs.forEach(([x,y])=>{ if(inWin(x)&&inWin(y)){ const kk=[x,y].sort((u,v)=>u-v).join('-'); bloc.r.forEach(rr=>{ const cm=String(rr.c||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n)).sort((u,v)=>u-v).join('-'); if(cm===kk) sum+=(parseFloat(rr.d)||0)/100; }); } });
+      } else {
+        pairs.forEach(([x,y])=>{ if(inWin(x)&&inWin(y)){ let r=lireRapport(a,type,x+'-'+y); if(r==null) r=lireRapport(a,type,y+'-'+x); if(r&&r>0) sum+=r; } });
+      }
+      return sum/nC - 1;
+    };
     switch(key){
       case 'C1_G': return single(c1,'SIMPLE_GAGNANT', arr[0]===c1);
       case 'C1_P': return single(c1,'SIMPLE_PLACE', arr3.includes(c1));
@@ -518,6 +539,12 @@ function updateAnalyse() {
         });
         return sum/3 - 1; // mise = 3 combis, retour = somme des rapports gagnants
       }
+      case 'CGB_4': return comboBox(poolN(4),'COUPLE_GAGNANT', n=>arr2.includes(n));
+      case 'CGB_5': return comboBox(poolN(5),'COUPLE_GAGNANT', n=>arr2.includes(n));
+      case 'CPB_4': return comboBox(poolN(4),'COUPLE_PLACE', n=>arr3.includes(n));
+      case 'CPB_5': return comboBox(poolN(5),'COUPLE_PLACE', n=>arr3.includes(n));
+      case 'S4B_3': return comboBox(poolN(3),'DEUX_SUR_QUATRE', n=>arr4.includes(n));
+      case 'S4B_4': return comboBox(poolN(4),'DEUX_SUR_QUATRE', n=>arr4.includes(n));
     }
     return null;
   };
