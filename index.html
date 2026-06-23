@@ -831,6 +831,23 @@ function updateAnalyse() {
   const coteHeadCols=`<div></div>`+coteYears.map(y=>`<div style="text-align:center;font-weight:700;color:var(--gold);font-size:12px">${y}</div>`).join('');
   const coteRows=coteBuckets.map(b=>{ const has=coteYears.some(y=>coteData[b.key][y]&&coteData[b.key][y].courses); if(!has) return ''; return `<div style="display:grid;grid-template-columns:${coteGridCols};gap:6px;padding:8px 0;border-bottom:1px solid var(--border);align-items:center"><div style="font-size:12px"><span style="font-weight:700">${b.key}</span>${b.note?`<div style="font-size:9px;color:var(--muted)">${b.note}</div>`:''}</div>${coteYears.map(y=>coteCell(b.key,y)).join('')}</div>`; }).join('');
 
+  // ── Décomposition 3R par tranche de cote (toutes années) : réussite × rapport moyen = ROI ──
+  const coteR3 = coteBuckets.map(b=>{
+    let courses=0, places=0, gain=0;
+    coteYears.forEach(y=>{ const d=coteData[b.key][y]; if(d){ courses+=d.courses; places+=d.places; gain+=d.gain; } });
+    const taux=courses?places/courses:0, rapMoy=places?gain/places:0, roi=courses?((gain-courses)/courses)*100:0;
+    return {key:b.key, note:b.note, courses, taux, rapMoy, roi};
+  }).filter(r=>r.courses>0);
+  const coteR3Rows = coteR3.map(r=>{
+    const col=r.roi>3?'var(--green)':(r.roi>=0?'var(--orange)':'var(--red)');
+    return `<div style="display:grid;grid-template-columns:1.1fr 1fr 1fr 1fr;gap:6px;font-size:13px;text-align:center;padding:8px 0;border-bottom:1px solid var(--border);align-items:center">
+      <div style="text-align:left"><span style="font-weight:700">${r.key}</span>${r.note?`<div style="font-size:9px;color:var(--muted)">${r.note}</div>`:''}<div style="font-size:9px;color:var(--muted)">n=${r.courses}</div></div>
+      <div style="font-family:var(--mono)">${Math.round(r.taux*100)}%</div>
+      <div style="font-family:var(--mono)">${r.rapMoy.toFixed(2)}€</div>
+      <div style="font-family:var(--mono);font-weight:700;color:${col}">${r.roi>=0?'+':''}${r.roi.toFixed(1)}%</div>
+    </div>`;
+  }).join('');
+
   // ── DIAGNOSTIC : l'edge 2024 vient-il des classements (critères annuels) ? ──
   // On reconstruit le C1 à partir des libellés de critères stockés, avec puis sans les 2 critères annuels.
   const W1 = new Set(['Musique régulière','Driver top LeTrot','Cumulard top 6','Favori du marché','Avis entraîneur POSITIF','Excellent chrono','Vraie Musique top 3','Bon ratio victoires','Domine la hiérarchie']);
@@ -940,6 +957,13 @@ function updateAnalyse() {
       <div style="display:grid;grid-template-columns:${coteGridCols};gap:6px;padding-bottom:6px;border-bottom:2px solid var(--border)">${coteHeadCols}</div>
       ${coteRows}
       <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">Cellule : ROI placé · (taux placé · n). ⚠️ n&lt;20 grisé = bruit. Cote basse = favori = rapport faible. Une tranche n'est crédible que verte ET stable dans le temps.</div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px">Les 3 R par tranche de cote — réussite × rapport = ROI</div>
+      <div style="font-size:11px;color:var(--dim);margin-bottom:10px;line-height:1.5">Le test de ton hypothèse : en montant en cote pour viser ~2€ de rapport placé, <b>de combien chute la réussite ?</b> Le ROI est le produit des deux (formule de la formation). Toutes années confondues.</div>
+      <div style="display:grid;grid-template-columns:1.1fr 1fr 1fr 1fr;gap:6px;font-size:10px;color:var(--muted);font-weight:600;text-align:center;border-bottom:2px solid var(--border);padding-bottom:6px"><div style="text-align:left">Cote C1</div><div>Réussite</div><div>Rapport moy</div><div>ROI</div></div>
+      ${coteR3Rows}
+      <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">Rapport moy = gain moyen touché quand le C1 place (R1). ROI = réussite × rapport − 1. Regarde si le produit dépasse 1 quelque part : réussite et rapport se compensent — le marché price exactement le compromis.</div>
     </div>
     <div class="card" style="margin-top:14px">
       <div style="font-size:13px;font-weight:600;margin-bottom:4px">2024 vient-il des classements ? — C1 placé, avec vs sans critères annuels</div>
