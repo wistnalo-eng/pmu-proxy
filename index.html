@@ -801,6 +801,36 @@ function updateAnalyse() {
     </div>`;
   }).join('');
 
+  // ── Tri par tranche de cote du C1 (valeur) : ROI placé par tranche × année ──
+  const coteBuckets = [
+    {key:'< 2,5', lo:0, hi:2.5, note:'favoris'},
+    {key:'2,5-4', lo:2.5, hi:4, note:''},
+    {key:'4-6', lo:4, hi:6, note:''},
+    {key:'6-10', lo:6, hi:10, note:''},
+    {key:'≥ 10', lo:10, hi:99999, note:'outsiders'}
+  ];
+  const coteBucketOf = c => coteBuckets.find(b => c>=b.lo && c<b.hi) || coteBuckets[coteBuckets.length-1];
+  const coteData = {}; coteBuckets.forEach(b => coteData[b.key]={});
+  const coteYearsSet = new Set();
+  done.forEach(a => {
+    const c1 = (a.top3||[])[0];
+    if (!c1 || c1.score==null) return;
+    const sc = Math.round(c1.score); if (sc<5 || sc>7) return;
+    const cote = c1.cote; if (!cote || cote<=0) return;
+    const arr = (a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n)); if (!arr.length) return;
+    const b = coteBucketOf(cote);
+    const ym=(a.date||'').match(/\/(\d{4})$/); const yr=ym?ym[1]:'?'; coteYearsSet.add(yr);
+    const placed = arr.slice(0,3).includes(c1.numero);
+    const rap = placed ? (lireRapport(a,'SIMPLE_PLACE',String(c1.numero))||0) : 0;
+    if(!coteData[b.key][yr]) coteData[b.key][yr]={courses:0,places:0,gain:0};
+    const cell=coteData[b.key][yr]; cell.courses++; if(placed){cell.places++; cell.gain+=rap;}
+  });
+  const coteYears=[...coteYearsSet].sort();
+  const coteGridCols=`1.1fr ${coteYears.map(()=>'1fr').join(' ')}`;
+  const coteCell=(bk,yr)=>{ const d=coteData[bk][yr]; if(!d||!d.courses) return `<div style="text-align:center;color:var(--border);font-family:var(--mono);font-size:12px">—</div>`; const roi=((d.gain-d.courses)/d.courses)*100; const taux=Math.round(d.places/d.courses*100); const thin=d.courses<20; const col=thin?'var(--muted)':(roi>3?'var(--green)':(roi>=0?'var(--orange)':'var(--red)')); return `<div style="text-align:center"><div style="font-family:var(--mono);font-weight:700;font-size:13px;color:${col}">${roi>=0?'+':''}${roi.toFixed(0)}%</div><div style="font-size:9px;color:var(--muted)">${taux}%·${d.courses}${thin?'⚠️':''}</div></div>`; };
+  const coteHeadCols=`<div></div>`+coteYears.map(y=>`<div style="text-align:center;font-weight:700;color:var(--gold);font-size:12px">${y}</div>`).join('');
+  const coteRows=coteBuckets.map(b=>{ const has=coteYears.some(y=>coteData[b.key][y]&&coteData[b.key][y].courses); if(!has) return ''; return `<div style="display:grid;grid-template-columns:${coteGridCols};gap:6px;padding:8px 0;border-bottom:1px solid var(--border);align-items:center"><div style="font-size:12px"><span style="font-weight:700">${b.key}</span>${b.note?`<div style="font-size:9px;color:var(--muted)">${b.note}</div>`:''}</div>${coteYears.map(y=>coteCell(b.key,y)).join('')}</div>`; }).join('');
+
   el.innerHTML = `
     <div class="card" style="margin-bottom:14px">
       <label style="display:block;font-size:11px;color:var(--dim);margin-bottom:6px;font-weight:600">Type de pari</label>
@@ -875,6 +905,13 @@ function updateAnalyse() {
       <div style="display:grid;grid-template-columns:${fsGridCols};gap:6px;padding-bottom:6px;border-bottom:2px solid var(--border)">${fsHeadCols}</div>
       ${fsRows}
       <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">⚠️ n&lt;20 (grisé) = trop peu de courses, ignore. Une tranche n'est exploitable que si elle est positive ET stable d'année en année. Rappel : aucun tri ne crée d'edge — au mieux il limite la casse vers le plancher du prélèvement.</div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px">Tri par tranche de cote du C1 — ROI placé <span style="font-size:11px;color:var(--muted);font-weight:400">(5-7 pts, toutes cotes)</span></div>
+      <div style="font-size:11px;color:var(--dim);margin-bottom:10px;line-height:1.5">La cote est connue <b>avant</b> la course → filtre de valeur actionnable. Le candidat à surveiller : la tranche <b>4-6</b>. Verte sur 4-5 ans = première vraie piste du projet. Une seule année = bruit.</div>
+      <div style="display:grid;grid-template-columns:${coteGridCols};gap:6px;padding-bottom:6px;border-bottom:2px solid var(--border)">${coteHeadCols}</div>
+      ${coteRows}
+      <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">Cellule : ROI placé · (taux placé · n). ⚠️ n&lt;20 grisé = bruit. Cote basse = favori = rapport faible. Une tranche n'est crédible que verte ET stable dans le temps.</div>
     </div>`;
 
   // Câblage : curseur initial + les deux menus (pari + système de mise)
