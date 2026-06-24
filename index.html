@@ -848,7 +848,24 @@ function updateAnalyse() {
     </div>`;
   }).join('');
 
-  // ── DIAGNOSTIC : l'edge 2024 vient-il des classements (critères annuels) ? ──
+  // ── Croisement : C1 5-7 pts + cote <2,5 + 12-14 partants, ROI placé par année ──
+  const xData={}; const xYearsSet=new Set();
+  done.forEach(a=>{
+    const c1=(a.top3||[])[0]; if(!c1||c1.score==null) return;
+    const sc=Math.round(c1.score); if(sc<5||sc>7) return;
+    const cote=c1.cote; if(!cote||cote<=0||cote>=2.5) return;
+    const fs=a.partants||(a.chevaux||[]).length||0; if(fs<12||fs>14) return;
+    const arr=(a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n)); if(!arr.length) return;
+    const ym=(a.date||'').match(/\/(\d{4})$/); const yr=ym?ym[1]:'?'; xYearsSet.add(yr);
+    const placed=arr.slice(0,3).includes(c1.numero);
+    const rap=placed?(lireRapport(a,'SIMPLE_PLACE',String(c1.numero))||0):0;
+    if(!xData[yr]) xData[yr]={courses:0,places:0,gain:0};
+    xData[yr].courses++; if(placed){xData[yr].places++; xData[yr].gain+=rap;}
+  });
+  const xYears=[...xYearsSet].sort();
+  let xTotC=0,xTotP=0,xTotG=0; xYears.forEach(y=>{const d=xData[y]; xTotC+=d.courses; xTotP+=d.places; xTotG+=d.gain;});
+  const xRowOf=(label,d)=>{ if(!d||!d.courses) return ''; const taux=Math.round(d.places/d.courses*100); const roi=((d.gain-d.courses)/d.courses)*100; const thin=d.courses<20; const col=thin?'var(--muted)':(roi>3?'var(--green)':(roi>=0?'var(--orange)':'var(--red)')); return `<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;font-size:13px;text-align:center;padding:8px 0;border-bottom:1px solid var(--border);align-items:center"><div style="text-align:left;font-weight:700;color:var(--gold)">${label}</div><div style="font-family:var(--mono);color:var(--muted)">${d.courses}</div><div style="font-family:var(--mono)">${taux}%</div><div style="font-family:var(--mono);font-weight:700;color:${col}">${roi>=0?'+':''}${roi.toFixed(1)}%${thin?' ⚠️':''}</div></div>`; };
+  const xRows = xYears.map(y=>xRowOf(y,xData[y])).join('') + xRowOf('TOTAL',{courses:xTotC,places:xTotP,gain:xTotG});
   // On reconstruit le C1 à partir des libellés de critères stockés, avec puis sans les 2 critères annuels.
   const W1 = new Set(['Musique régulière','Driver top LeTrot','Cumulard top 6','Favori du marché','Avis entraîneur POSITIF','Excellent chrono','Vraie Musique top 3','Bon ratio victoires','Domine la hiérarchie']);
   const YEARC = new Set(['Driver top LeTrot','Cumulard top 6']);
@@ -964,6 +981,13 @@ function updateAnalyse() {
       <div style="display:grid;grid-template-columns:1.1fr 1fr 1fr 1fr;gap:6px;font-size:10px;color:var(--muted);font-weight:600;text-align:center;border-bottom:2px solid var(--border);padding-bottom:6px"><div style="text-align:left">Cote C1</div><div>Réussite</div><div>Rapport moy</div><div>ROI</div></div>
       ${coteR3Rows}
       <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">Rapport moy = gain moyen touché quand le C1 place (R1). ROI = réussite × rapport − 1. Regarde si le produit dépasse 1 quelque part : réussite et rapport se compensent — le marché price exactement le compromis.</div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px">🎯 Terrain croisé — cote &lt;2,5 <b>ET</b> 12-14 partants <span style="font-size:11px;color:var(--muted);font-weight:400">(5-7 pts, placé)</span></div>
+      <div style="font-size:11px;color:var(--dim);margin-bottom:10px;line-height:1.5">Croisement de tes deux filtres positifs. ⚠️ Échantillon réduit → grande incertitude. Le terrain n'existe que s'il est vert sur <b>2022-2025</b> avec n suffisant (&lt;20 = bruit).</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;font-size:10px;color:var(--muted);font-weight:600;text-align:center;border-bottom:2px solid var(--border);padding-bottom:6px"><div style="text-align:left">Année</div><div>Courses</div><div>Réussite</div><div>ROI placé</div></div>
+      ${xRows}
+      <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">Si une seule année casse ou si les n sont petits, ce n'est pas un terrain — c'est du double filtrage in-sample. Compare honnêtement à la règle des 4 années pleines.</div>
     </div>
     <div class="card" style="margin-top:14px">
       <div style="font-size:13px;font-weight:600;margin-bottom:4px">2024 vient-il des classements ? — C1 placé, avec vs sans critères annuels</div>
