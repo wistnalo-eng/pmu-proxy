@@ -885,6 +885,27 @@ function updateAnalyse() {
   });
   const vbCell=g=>{ if(!g.c) return '<div style="text-align:center;color:var(--border);font-family:var(--mono)">—</div>'; const taux=Math.round(g.p/g.c*100); const roi=((g.g-g.c)/g.c)*100; const thin=g.c<20; const rcol=thin?'var(--muted)':(roi>=0?'var(--green)':'var(--red)'); return `<div style="text-align:center"><div style="font-family:var(--mono);font-weight:700;font-size:14px">${taux}%</div><div style="font-size:9px;color:${rcol}">${roi>=0?'+':''}${roi.toFixed(0)}% · n${g.c}${thin?'⚠️':''}</div></div>`; };
   const vbRows=coteBuckets.map(b=>{ const d=vbData[b.key]; if(!d.star.c&&!d.lamb.c) return ''; return `<div style="display:grid;grid-template-columns:1fr 1.2fr 1.2fr;gap:6px;padding:8px 0;border-bottom:1px solid var(--border);align-items:center"><div style="font-size:12px"><span style="font-weight:700">${b.key}</span>${b.note?`<div style="font-size:9px;color:var(--muted)">${b.note}</div>`:''}</div>${vbCell(d.star)}${vbCell(d.lamb)}</div>`; }).join('');
+
+  // ── Test causal : « favori lambda » (driver NON-vedette) par année, tranches <2,5 et 4-6 ──
+  const vbBrackets=['< 2,5','4-6'];
+  const vbYr={}; vbBrackets.forEach(k=>vbYr[k]={}); const vbYrSet=new Set();
+  done.forEach(a=>{
+    const c1=(a.top3||[])[0]; if(!c1||c1.score==null) return;
+    const sc=Math.round(c1.score); if(sc<5||sc>7) return;
+    const cote=c1.cote; if(!cote||cote<=0) return;
+    const b=coteBucketOf(cote); if(!vbBrackets.includes(b.key)) return;
+    const arr=(a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n)); if(!arr.length) return;
+    const ym=(a.date||'').match(/\/(\d{4})$/); const yr=ym?ym[1]:'?'; vbYrSet.add(yr);
+    const star=critOf(a,c1.numero).includes(STAR);
+    const placed=arr.slice(0,3).includes(c1.numero);
+    const rap=placed?(lireRapport(a,'SIMPLE_PLACE',String(c1.numero))||0):0;
+    if(!vbYr[b.key][yr]) vbYr[b.key][yr]={star:{c:0,p:0,g:0},lamb:{c:0,p:0,g:0}};
+    const grp=star?vbYr[b.key][yr].star:vbYr[b.key][yr].lamb;
+    grp.c++; if(placed){grp.p++; grp.g+=rap;}
+  });
+  const vbYears=[...vbYrSet].sort();
+  const vbYrCell=g=>{ if(!g||!g.c) return '<div style="text-align:center;color:var(--border);font-family:var(--mono)">—</div>'; const taux=Math.round(g.p/g.c*100); const roi=((g.g-g.c)/g.c)*100; const thin=g.c<20; const col=thin?'var(--muted)':(roi>3?'var(--green)':(roi>=0?'var(--orange)':'var(--red)')); return `<div style="text-align:center"><div style="font-family:var(--mono);font-weight:700;font-size:13px;color:${col}">${roi>=0?'+':''}${roi.toFixed(0)}%</div><div style="font-size:9px;color:var(--muted)">${taux}%·n${g.c}${thin?'⚠️':''}</div></div>`; };
+  const vbYrTable=k=>vbYears.map(y=>{ const d=vbYr[k][y]; if(!d) return ''; return `<div style="display:grid;grid-template-columns:0.8fr 1.2fr 1.2fr;gap:6px;padding:7px 0;border-bottom:1px solid var(--border);align-items:center"><div style="font-weight:700;color:var(--gold);font-size:13px">${y}</div>${vbYrCell(d.lamb)}${vbYrCell(d.star)}</div>`; }).join('');
   // On reconstruit le C1 à partir des libellés de critères stockés, avec puis sans les 2 critères annuels.
   const W1 = new Set(['Musique régulière','Driver top LeTrot','Cumulard top 6','Favori du marché','Avis entraîneur POSITIF','Excellent chrono','Vraie Musique top 3','Bon ratio victoires','Domine la hiérarchie']);
   const YEARC = new Set(['Driver top LeTrot','Cumulard top 6']);
@@ -1014,6 +1035,17 @@ function updateAnalyse() {
       <div style="display:grid;grid-template-columns:1fr 1.2fr 1.2fr;gap:6px;font-size:10px;color:var(--muted);font-weight:600;text-align:center;border-bottom:2px solid var(--border);padding-bottom:6px"><div style="text-align:left">Cote C1</div><div>Driver vedette</div><div>Driver lambda</div></div>
       ${vbRows}
       <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">Chaque cellule : taux placé · (ROI · n). ⚠️ n&lt;20 = bruit. Si « vedette » place nettement MOINS que « lambda » dans une même tranche, le biais existe → la value est sur le 2ᵉ favori. Si c'est égal, pas de biais exploitable.</div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px">🔬 Favori lambda par année — le biais survit-il hors échantillon ?</div>
+      <div style="font-size:11px;color:var(--dim);margin-bottom:10px;line-height:1.5">Test causal : « jouer le favori quand son driver n'est PAS une vedette ». Colonne <b>LAMBDA</b> = la stratégie candidate. Pour valider, elle doit être verte sur <b>2022-2025</b>. La colonne vedette est là pour contrôle (le biais tient si lambda &gt; vedette chaque année).</div>
+      <div style="font-size:12px;font-weight:700;color:var(--gold);margin:6px 0 2px">Tranche cote &lt; 2,5</div>
+      <div style="display:grid;grid-template-columns:0.8fr 1.2fr 1.2fr;gap:6px;font-size:10px;color:var(--muted);font-weight:600;text-align:center;border-bottom:2px solid var(--border);padding-bottom:6px"><div style="text-align:left">Année</div><div>Favori LAMBDA</div><div>Favori vedette</div></div>
+      ${vbYrTable('< 2,5')}
+      <div style="font-size:12px;font-weight:700;color:var(--gold);margin:14px 0 2px">Tranche cote 4-6</div>
+      <div style="display:grid;grid-template-columns:0.8fr 1.2fr 1.2fr;gap:6px;font-size:10px;color:var(--muted);font-weight:600;text-align:center;border-bottom:2px solid var(--border);padding-bottom:6px"><div style="text-align:left">Année</div><div>Favori LAMBDA</div><div>Favori vedette</div></div>
+      ${vbYrTable('4-6')}
+      <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">Cellule : ROI · (taux placé · n). Si LAMBDA casse une année pleine (2022-2025) ou repose sur 2024, ce n'est pas un edge. Si LAMBDA est vert partout ET &gt; vedette partout → premier value-bet réel du projet.</div>
     </div>
     <div class="card" style="margin-top:14px">
       <div style="font-size:13px;font-weight:600;margin-bottom:4px">2024 vient-il des classements ? — C1 placé, avec vs sans critères annuels</div>
