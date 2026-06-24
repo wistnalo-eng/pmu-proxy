@@ -866,6 +866,25 @@ function updateAnalyse() {
   let xTotC=0,xTotP=0,xTotG=0; xYears.forEach(y=>{const d=xData[y]; xTotC+=d.courses; xTotP+=d.places; xTotG+=d.gain;});
   const xRowOf=(label,d)=>{ if(!d||!d.courses) return ''; const taux=Math.round(d.places/d.courses*100); const roi=((d.gain-d.courses)/d.courses)*100; const thin=d.courses<20; const col=thin?'var(--muted)':(roi>3?'var(--green)':(roi>=0?'var(--orange)':'var(--red)')); return `<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;font-size:13px;text-align:center;padding:8px 0;border-bottom:1px solid var(--border);align-items:center"><div style="text-align:left;font-weight:700;color:var(--gold)">${label}</div><div style="font-family:var(--mono);color:var(--muted)">${d.courses}</div><div style="font-family:var(--mono)">${taux}%</div><div style="font-family:var(--mono);font-weight:700;color:${col}">${roi>=0?'+':''}${roi.toFixed(1)}%${thin?' ⚠️':''}</div></div>`; };
   const xRows = xYears.map(y=>xRowOf(y,xData[y])).join('') + xRowOf('TOTAL',{courses:xTotC,places:xTotP,gain:xTotG});
+
+  // ── VALUE-BET : biais du driver vedette. À cote égale, le favori place-t-il moins avec une star ? ──
+  const STAR='Driver top LeTrot';
+  const critOf=(a,num)=>{ const h=(a.chevaux||[]).find(x=>x.numero===num); return h?(h.criteres||[]):[]; };
+  const vbData={}; coteBuckets.forEach(b=>vbData[b.key]={star:{c:0,p:0,g:0},lamb:{c:0,p:0,g:0}});
+  done.forEach(a=>{
+    const c1=(a.top3||[])[0]; if(!c1||c1.score==null) return;
+    const sc=Math.round(c1.score); if(sc<5||sc>7) return;
+    const cote=c1.cote; if(!cote||cote<=0) return;
+    const arr=(a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n)); if(!arr.length) return;
+    const b=coteBucketOf(cote);
+    const star=critOf(a,c1.numero).includes(STAR);
+    const placed=arr.slice(0,3).includes(c1.numero);
+    const rap=placed?(lireRapport(a,'SIMPLE_PLACE',String(c1.numero))||0):0;
+    const grp=star?vbData[b.key].star:vbData[b.key].lamb;
+    grp.c++; if(placed){grp.p++; grp.g+=rap;}
+  });
+  const vbCell=g=>{ if(!g.c) return '<div style="text-align:center;color:var(--border);font-family:var(--mono)">—</div>'; const taux=Math.round(g.p/g.c*100); const roi=((g.g-g.c)/g.c)*100; const thin=g.c<20; const rcol=thin?'var(--muted)':(roi>=0?'var(--green)':'var(--red)'); return `<div style="text-align:center"><div style="font-family:var(--mono);font-weight:700;font-size:14px">${taux}%</div><div style="font-size:9px;color:${rcol}">${roi>=0?'+':''}${roi.toFixed(0)}% · n${g.c}${thin?'⚠️':''}</div></div>`; };
+  const vbRows=coteBuckets.map(b=>{ const d=vbData[b.key]; if(!d.star.c&&!d.lamb.c) return ''; return `<div style="display:grid;grid-template-columns:1fr 1.2fr 1.2fr;gap:6px;padding:8px 0;border-bottom:1px solid var(--border);align-items:center"><div style="font-size:12px"><span style="font-weight:700">${b.key}</span>${b.note?`<div style="font-size:9px;color:var(--muted)">${b.note}</div>`:''}</div>${vbCell(d.star)}${vbCell(d.lamb)}</div>`; }).join('');
   // On reconstruit le C1 à partir des libellés de critères stockés, avec puis sans les 2 critères annuels.
   const W1 = new Set(['Musique régulière','Driver top LeTrot','Cumulard top 6','Favori du marché','Avis entraîneur POSITIF','Excellent chrono','Vraie Musique top 3','Bon ratio victoires','Domine la hiérarchie']);
   const YEARC = new Set(['Driver top LeTrot','Cumulard top 6']);
@@ -988,6 +1007,13 @@ function updateAnalyse() {
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;font-size:10px;color:var(--muted);font-weight:600;text-align:center;border-bottom:2px solid var(--border);padding-bottom:6px"><div style="text-align:left">Année</div><div>Courses</div><div>Réussite</div><div>ROI placé</div></div>
       ${xRows}
       <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">Si une seule année casse ou si les n sont petits, ce n'est pas un terrain — c'est du double filtrage in-sample. Compare honnêtement à la règle des 4 années pleines.</div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px">💎 Value-bet — biais du driver vedette <span style="font-size:11px;color:var(--muted);font-weight:400">(taux placé du C1)</span></div>
+      <div style="font-size:11px;color:var(--dim);margin-bottom:10px;line-height:1.5">À <b>cote égale</b> (même tranche), le favori place-t-il <b>moins</b> quand son driver est une vedette (liste top-LeTrot) que lambda ? Si oui → sa cote est sur-jouée → value sur son rival. C'est le seul value-bet possible au parimutuel.</div>
+      <div style="display:grid;grid-template-columns:1fr 1.2fr 1.2fr;gap:6px;font-size:10px;color:var(--muted);font-weight:600;text-align:center;border-bottom:2px solid var(--border);padding-bottom:6px"><div style="text-align:left">Cote C1</div><div>Driver vedette</div><div>Driver lambda</div></div>
+      ${vbRows}
+      <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">Chaque cellule : taux placé · (ROI · n). ⚠️ n&lt;20 = bruit. Si « vedette » place nettement MOINS que « lambda » dans une même tranche, le biais existe → la value est sur le 2ᵉ favori. Si c'est égal, pas de biais exploitable.</div>
     </div>
     <div class="card" style="margin-top:14px">
       <div style="font-size:13px;font-weight:600;margin-bottom:4px">2024 vient-il des classements ? — C1 placé, avec vs sans critères annuels</div>
