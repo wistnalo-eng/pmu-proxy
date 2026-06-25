@@ -949,40 +949,27 @@ function updateAnalyse() {
   const vbYrCell=g=>{ if(!g||!g.c) return '<div style="text-align:center;color:var(--border);font-family:var(--mono)">—</div>'; const taux=Math.round(g.p/g.c*100); const roi=((g.g-g.c)/g.c)*100; const thin=g.c<20; const col=thin?'var(--muted)':(roi>3?'var(--green)':(roi>=0?'var(--orange)':'var(--red)')); return `<div style="text-align:center"><div style="font-family:var(--mono);font-weight:700;font-size:13px;color:${col}">${roi>=0?'+':''}${roi.toFixed(0)}%</div><div style="font-size:9px;color:var(--muted)">${taux}%·n${g.c}${thin?'⚠️':''}</div></div>`; };
   const vbYrTable=k=>vbYears.map(y=>{ const d=vbYr[k][y]; if(!d) return ''; return `<div style="display:grid;grid-template-columns:0.8fr 1.2fr 1.2fr;gap:6px;padding:7px 0;border-bottom:1px solid var(--border);align-items:center"><div style="font-weight:700;color:var(--gold);font-size:13px">${y}</div>${vbYrCell(d.lamb)}${vbYrCell(d.star)}</div>`; }).join('');
 
-  // ── Parasite offensif : C2 placé quand C1 = vedette sur-jouée (cote <2,5) ──
-  const c2Data={}; const c2Set=new Set();
-  done.forEach(a=>{
-    const c1=(a.top3||[])[0], c2=(a.top3||[])[1];
-    if(!c1||c1.score==null||!c2) return;
-    const sc=Math.round(c1.score); if(sc<5||sc>7) return;
-    const cote=c1.cote; if(!cote||cote<=0||cote>=2.5) return;          // C1 favori écrasant
-    if(!critOf(a,c1.numero).includes(STAR)) return;                    // C1 doit être vedette
-    const arr=(a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n)); if(!arr.length) return;
-    const ym=(a.date||'').match(/\/(\d{4})$/); const yr=ym?ym[1]:'?'; c2Set.add(yr);
-    const placed=arr.slice(0,3).includes(c2.numero);
-    const rap=placed?(lireRapport(a,'SIMPLE_PLACE',String(c2.numero))||0):0;
-    if(!c2Data[yr]) c2Data[yr]={c:0,p:0,g:0};
-    c2Data[yr].c++; if(placed){c2Data[yr].p++; c2Data[yr].g+=rap;}
-  });
-  const c2Years=[...c2Set].sort();
-  let c2TotC=0,c2TotP=0,c2TotG=0; c2Years.forEach(y=>{const d=c2Data[y]; c2TotC+=d.c; c2TotP+=d.p; c2TotG+=d.g;});
-  const c2RowOf=(label,d)=>{ if(!d||!d.c) return ''; const taux=Math.round(d.p/d.c*100); const roi=((d.g-d.c)/d.c)*100; const thin=d.c<20; const col=thin?'var(--muted)':(roi>3?'var(--green)':(roi>=0?'var(--orange)':'var(--red)')); return `<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;font-size:13px;text-align:center;padding:8px 0;border-bottom:1px solid var(--border);align-items:center"><div style="text-align:left;font-weight:700;color:var(--gold)">${label}</div><div style="font-family:var(--mono);color:var(--muted)">${d.c}</div><div style="font-family:var(--mono)">${taux}%</div><div style="font-family:var(--mono);font-weight:700;color:${col}">${roi>=0?'+':''}${roi.toFixed(1)}%${thin?' ⚠️':''}</div></div>`; };
-  const c2Rows=c2Years.map(y=>c2RowOf(y,c2Data[y])).join('')+c2RowOf('TOTAL',{c:c2TotC,p:c2TotP,g:c2TotG});
-
-  // ── Parasite numéro : à cote égale (<2,5), le numéro du C1 distord-il la valeur ? ──
-  const numGroups=[{k:'1-3',lo:1,hi:3,note:'corde (sur-pari ?)'},{k:'4-8',lo:4,hi:8,note:'milieu'},{k:'9-11',lo:9,hi:11,note:'extérieur'},{k:'12+',lo:12,hi:99,note:'grand n° (délaissé ?)'}];
-  const numData={}; numGroups.forEach(g=>numData[g.k]={c:0,p:0,g:0});
+  // ── Parasite numéro : ventilé par année (favoris cote <2,5) ──
+  const numGroups=[{k:'1-3',lo:1,hi:3},{k:'4-8',lo:4,hi:8},{k:'9-11',lo:9,hi:11},{k:'12+',lo:12,hi:99}];
+  const numYr={}; const numYrSet=new Set();
   done.forEach(a=>{
     const c1=(a.top3||[])[0]; if(!c1||c1.score==null) return;
     const sc=Math.round(c1.score); if(sc<5||sc>7) return;
     const cote=c1.cote; if(!cote||cote<=0||cote>=2.5) return;       // contrôle cote : favoris <2,5
     const arr=(a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n)); if(!arr.length) return;
     const num=c1.numero; const grp=numGroups.find(g=>num>=g.lo&&num<=g.hi); if(!grp) return;
+    const ym=(a.date||'').match(/\/(\d{4})$/); const yr=ym?ym[1]:'?'; numYrSet.add(yr);
     const placed=arr.slice(0,3).includes(num);
     const rap=placed?(lireRapport(a,'SIMPLE_PLACE',String(num))||0):0;
-    const d=numData[grp.k]; d.c++; if(placed){d.p++; d.g+=rap;}
+    if(!numYr[yr]){ numYr[yr]={}; numGroups.forEach(g=>numYr[yr][g.k]={c:0,p:0,g:0}); }
+    const d=numYr[yr][grp.k]; d.c++; if(placed){d.p++; d.g+=rap;}
   });
-  const numRows=numGroups.map(g=>{ const d=numData[g.k]; if(!d.c) return ''; const taux=Math.round(d.p/d.c*100); const rapMoy=d.p?d.g/d.p:0; const roi=((d.g-d.c)/d.c)*100; const thin=d.c<20; const col=thin?'var(--muted)':(roi>3?'var(--green)':(roi>=0?'var(--orange)':'var(--red)')); return `<div style="display:grid;grid-template-columns:1.1fr 1fr 1fr 1fr;gap:6px;font-size:13px;text-align:center;padding:8px 0;border-bottom:1px solid var(--border);align-items:center"><div style="text-align:left"><span style="font-weight:700">N° ${g.k}</span>${g.note?`<div style="font-size:9px;color:var(--muted)">${g.note}</div>`:''}<div style="font-size:9px;color:var(--muted)">n=${d.c}</div></div><div style="font-family:var(--mono)">${taux}%</div><div style="font-family:var(--mono)">${rapMoy.toFixed(2)}€</div><div style="font-family:var(--mono);font-weight:700;color:${col}">${roi>=0?'+':''}${roi.toFixed(1)}%${thin?' ⚠️':''}</div></div>`; }).join('');
+  const numYears=[...numYrSet].sort();
+  const numCell=d=>{ if(!d||!d.c) return '<div style="text-align:center;color:var(--border);font-family:var(--mono)">—</div>'; const taux=Math.round(d.p/d.c*100); const roi=((d.g-d.c)/d.c)*100; const thin=d.c<20; const col=thin?'var(--muted)':(roi>3?'var(--green)':(roi>=0?'var(--orange)':'var(--red)')); return `<div style="text-align:center"><div style="font-family:var(--mono);font-weight:700;font-size:12px;color:${col}">${roi>=0?'+':''}${roi.toFixed(0)}%</div><div style="font-size:8px;color:var(--muted)">${taux}%·${d.c}${thin?'⚠':''}</div></div>`; };
+  const numYrRows=numYears.map(y=>`<div style="display:grid;grid-template-columns:0.6fr 1fr 1fr 1fr 1fr;gap:4px;padding:7px 0;border-bottom:1px solid var(--border);align-items:center"><div style="font-weight:700;color:var(--gold);font-size:12px">${y}</div>${numGroups.map(g=>numCell(numYr[y][g.k])).join('')}</div>`).join('');
+  const numTot={}; numGroups.forEach(g=>numTot[g.k]={c:0,p:0,g:0});
+  numYears.forEach(y=>numGroups.forEach(g=>{ const d=numYr[y][g.k]; if(d){numTot[g.k].c+=d.c;numTot[g.k].p+=d.p;numTot[g.k].g+=d.g;} }));
+  const numTotRow=`<div style="display:grid;grid-template-columns:0.6fr 1fr 1fr 1fr 1fr;gap:4px;padding:8px 0 2px;border-top:2px solid var(--border);align-items:center"><div style="font-weight:700;font-size:11px">TOT</div>${numGroups.map(g=>numCell(numTot[g.k])).join('')}</div>`;
   // On reconstruit le C1 à partir des libellés de critères stockés, avec puis sans les 2 critères annuels.
   const W1 = new Set(['Musique régulière','Driver top LeTrot','Cumulard top 6','Favori du marché','Avis entraîneur POSITIF','Excellent chrono','Vraie Musique top 3','Bon ratio victoires','Domine la hiérarchie']);
   const YEARC = new Set(['Driver top LeTrot','Cumulard top 6']);
@@ -1125,18 +1112,12 @@ function updateAnalyse() {
       <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">Cellule : ROI · (taux placé · n). Si LAMBDA casse une année pleine (2022-2025) ou repose sur 2024, ce n'est pas un edge. Si LAMBDA est vert partout ET &gt; vedette partout → premier value-bet réel du projet.</div>
     </div>
     <div class="card" style="margin-top:14px">
-      <div style="font-size:13px;font-weight:600;margin-bottom:4px">⚔️ Parasite offensif — C2 placé quand C1 = vedette (cote &lt;2,5)</div>
-      <div style="font-size:11px;color:var(--dim);margin-bottom:10px;line-height:1.5">Report du biais : si la foule écrase la cote de la vedette, son rival (C2) est mécaniquement <b>sous-payé</b>. On joue le C2 en placé, à cote plus haute. Value réelle si vert sur 2022-2025.</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;font-size:10px;color:var(--muted);font-weight:600;text-align:center;border-bottom:2px solid var(--border);padding-bottom:6px"><div style="text-align:left">Année</div><div>Courses</div><div>Réussite</div><div>ROI placé</div></div>
-      ${c2Rows}
-      <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">⚠️ n&lt;20 = bruit. Le C2 place moins souvent que le C1 mais paie plus : c'est le couple réussite × rapport qui décide. Une seule année rouge ou des n trop petits = pas d'edge.</div>
-    </div>
-    <div class="card" style="margin-top:14px">
-      <div style="font-size:13px;font-weight:600;margin-bottom:4px">🔢 Parasite numéro — C1 placé par n° (favoris cote &lt;2,5)</div>
-      <div style="font-size:11px;color:var(--dim);margin-bottom:10px;line-height:1.5">À <b>cote égale</b> (&lt;2,5), le numéro distord-il la valeur ? Si les petits n° (1-3) placent <b>moins</b> / rapportent moins → sur-pari de la corde. Si les grands n° placent autant mais à meilleur ROI → délaissés = value.</div>
-      <div style="display:grid;grid-template-columns:1.1fr 1fr 1fr 1fr;gap:6px;font-size:10px;color:var(--muted);font-weight:600;text-align:center;border-bottom:2px solid var(--border);padding-bottom:6px"><div style="text-align:left">Numéro C1</div><div>Réussite</div><div>Rapport moy</div><div>ROI</div></div>
-      ${numRows}
-      <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">⚠️ Le numéro a un effet RÉEL au trot (corde), pas seulement perçu. Un écart de ROI ne prouve le parasite que s'il vient du PRIX (réussite stable, ROI différent), pas de la performance réelle.</div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px">🔢 Parasite numéro — ROI par année & par n° (favoris cote &lt;2,5)</div>
+      <div style="font-size:11px;color:var(--dim);margin-bottom:10px;line-height:1.5">À cote égale, l'effet du numéro est-il <b>stable dans le temps</b> ? Le poolé montrait 1-8 fort, 9+ faible. Si « 12+ » est rouge chaque année → favori à grand n° = piège durable (à éviter).</div>
+      <div style="display:grid;grid-template-columns:0.6fr 1fr 1fr 1fr 1fr;gap:4px;font-size:10px;color:var(--muted);font-weight:600;text-align:center;border-bottom:2px solid var(--border);padding-bottom:6px"><div style="text-align:left">Année</div><div>N°1-3</div><div>N°4-8</div><div>N°9-11</div><div>N°12+</div></div>
+      ${numYrRows}
+      ${numTotRow}
+      <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">Cellule : ROI · (taux placé · n). ⚠ = n&lt;20 (bruit). Le numéro a un effet RÉEL au trot (corde) : un ROI faible sur 12+ peut être la corde, pas un parasite. Mais pour TOI c'est pareil — si le favori grand n° perd, tu l'évites, peu importe la cause.</div>
     </div>
     <div class="card" style="margin-top:14px">
       <div style="font-size:13px;font-weight:600;margin-bottom:4px">2024 vient-il des classements ? — C1 placé, avec vs sans critères annuels</div>
