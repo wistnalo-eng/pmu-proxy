@@ -277,6 +277,36 @@ input,select{outline:none;font-family:var(--sans);-webkit-appearance:none}
   </div>
 </div>
 
+<div class="page" id="page-suivi">
+  <div style="padding-top:calc(var(--st)+16px)">
+    <div class="hdr-eyebrow" style="margin-bottom:6px">Test en aveugle · out-of-sample</div>
+    <div class="hdr-logo" style="margin-bottom:16px">Suivi <span>LAMBDA</span></div>
+
+    <div class="card" style="border:1px solid var(--gold)">
+      <div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px">📌 Règle gelée — ne rien changer</div>
+      <div style="font-size:12px;color:var(--dim);line-height:1.7">
+        Trot attelé · C1 score <b>5-7</b> · cote simple gagnant <b>&lt; 2,5</b> · driver <b>hors liste top-LeTrot</b> (lambda) · jeu <b>placé</b> · mise <b>plate 1€</b>.<br>
+        <span style="color:var(--muted);font-size:11px">Log aussi les favoris VEDETTE qualifiants (contrôle). Objectif : 150-200 courses avant tout verdict. Ne mise rien en réel tant que ce n'est pas validé ici.</span>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px">➕ Ajouter une course</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><div style="font-size:10px;color:var(--muted);margin-bottom:3px">Date</div><input type="date" id="sv-date" style="width:100%;padding:8px;background:var(--bg2,#1a1a1a);border:1px solid var(--border);border-radius:8px;color:var(--fg,#fff);font-size:13px"></div>
+        <div><div style="font-size:10px;color:var(--muted);margin-bottom:3px">Course (ex. R1C3)</div><input type="text" id="sv-label" placeholder="R1C3" style="width:100%;padding:8px;background:var(--bg2,#1a1a1a);border:1px solid var(--border);border-radius:8px;color:var(--fg,#fff);font-size:13px"></div>
+        <div><div style="font-size:10px;color:var(--muted);margin-bottom:3px">Cote gagnant C1</div><input type="number" step="0.1" id="sv-cote" placeholder="2.1" style="width:100%;padding:8px;background:var(--bg2,#1a1a1a);border:1px solid var(--border);border-radius:8px;color:var(--fg,#fff);font-size:13px"></div>
+        <div><div style="font-size:10px;color:var(--muted);margin-bottom:3px">Driver</div><select id="sv-vedette" style="width:100%;padding:8px;background:var(--bg2,#1a1a1a);border:1px solid var(--border);border-radius:8px;color:var(--fg,#fff);font-size:13px"><option value="0">Lambda (stratégie)</option><option value="1">Vedette (contrôle)</option></select></div>
+        <div><div style="font-size:10px;color:var(--muted);margin-bottom:3px">Résultat</div><select id="sv-place" onchange="document.getElementById('sv-rap-wrap').style.display=this.value==='1'?'block':'none'" style="width:100%;padding:8px;background:var(--bg2,#1a1a1a);border:1px solid var(--border);border-radius:8px;color:var(--fg,#fff);font-size:13px"><option value="0">Non placé</option><option value="1">Placé</option></select></div>
+        <div id="sv-rap-wrap" style="display:none"><div style="font-size:10px;color:var(--muted);margin-bottom:3px">Rapport placé touché (€)</div><input type="number" step="0.01" id="sv-rap" placeholder="1.40" style="width:100%;padding:8px;background:var(--bg2,#1a1a1a);border:1px solid var(--border);border-radius:8px;color:var(--fg,#fff);font-size:13px"></div>
+      </div>
+      <button onclick="addSuivi()" style="width:100%;margin-top:12px;padding:11px;background:var(--gold);color:#000;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">Enregistrer la course</button>
+    </div>
+
+    <div id="suivi-content"></div>
+  </div>
+</div>
+
 <!-- ══════════════════════════════════════
      BARRE D'ONGLETS
 ══════════════════════════════════════ -->
@@ -289,6 +319,9 @@ input,select{outline:none;font-family:var(--sans);-webkit-appearance:none}
   </button>
   <button class="tab-btn" onclick="goPage('bilan')" id="nav-bilan">
     <span class="ico">📊</span>Bilan
+  </button>
+  <button class="tab-btn" onclick="goPage('suivi')" id="nav-suivi">
+    <span class="ico">🔬</span>Suivi
   </button>
 </nav>
 
@@ -1065,13 +1098,14 @@ function updateAnalyse() {
 }
 
 function goPage(name) {
-  ['jeux','analyse','bilan'].forEach(n => {
+  ['jeux','analyse','bilan','suivi'].forEach(n => {
     document.getElementById('page-'+n).classList.toggle('on', n===name);
     document.getElementById('nav-'+n).classList.toggle('on', n===name);
   });
   window.scrollTo({top:0});
   if (name==='bilan') renderBilan();
   if (name==='analyse') renderAnalyse();
+  if (name==='suivi') renderSuivi();
 }
 
 function showBloc(name) {
@@ -1084,6 +1118,96 @@ function showBloc(name) {
 function retourCal()   { showBloc('cal'); }
 function retourProg()  { showBloc('prog'); }
 function retourScan1() { showBloc('scan1'); }
+
+// ══════════════════════════════════════════════════════
+//  SUIVI OUT-OF-SAMPLE (test en aveugle de la règle gelée)
+// ══════════════════════════════════════════════════════
+const SUIVI_KEY = 'cdch_suivi_v1';
+function loadSuivi(){ try{ return JSON.parse(localStorage.getItem(SUIVI_KEY)||'[]'); }catch(e){ return []; } }
+function saveSuivi(arr){ try{ localStorage.setItem(SUIVI_KEY, JSON.stringify(arr)); }catch(e){ alert('Stockage impossible'); } }
+
+function addSuivi(){
+  const date=document.getElementById('sv-date').value;
+  const label=document.getElementById('sv-label').value.trim();
+  const cote=parseFloat(document.getElementById('sv-cote').value);
+  const vedette=document.getElementById('sv-vedette').value==='1';
+  const place=document.getElementById('sv-place').value==='1';
+  const rapport=place?parseFloat(document.getElementById('sv-rap').value||'0'):0;
+  if(!date){ alert('Date requise'); return; }
+  if(!cote||cote<=0){ alert('Cote requise'); return; }
+  if(place && (!rapport||rapport<=0)){ alert('Rapport touché requis si placé'); return; }
+  const arr=loadSuivi();
+  arr.push({id:Date.now(), date, label, cote, vedette, place, rapport});
+  saveSuivi(arr);
+  document.getElementById('sv-label').value='';
+  document.getElementById('sv-cote').value='';
+  document.getElementById('sv-rap').value='';
+  document.getElementById('sv-place').value='0';
+  document.getElementById('sv-rap-wrap').style.display='none';
+  renderSuivi();
+}
+function delSuivi(id){ if(!confirm('Supprimer cette ligne ?')) return; saveSuivi(loadSuivi().filter(x=>x.id!==id)); renderSuivi(); }
+
+function suiviStat(rows){
+  const n=rows.length, p=rows.filter(r=>r.place).length;
+  const gain=rows.reduce((s,r)=>s+(r.place?r.rapport:0),0);
+  return { n, p, taux:n?Math.round(p/n*100):0, roi:n?((gain-n)/n*100):0, net:gain-n };
+}
+function suiviStatCard(title, st, isStrat){
+  const col = st.n<10 ? 'var(--muted)' : (st.roi>=0?'var(--green)':'var(--red)');
+  const warn = st.n<10 ? ' ⚠️' : '';
+  return `<div class="card" style="${isStrat?'border:1px solid var(--gold);':''}">
+    <div style="font-size:12px;font-weight:700;color:${isStrat?'var(--gold)':'var(--muted)'};margin-bottom:8px">${title}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
+      <div><div style="font-size:20px;font-weight:700;font-family:var(--mono)">${st.n}</div><div style="font-size:9px;color:var(--muted)">courses</div></div>
+      <div><div style="font-size:20px;font-weight:700;font-family:var(--mono)">${st.taux}%</div><div style="font-size:9px;color:var(--muted)">réussite</div></div>
+      <div><div style="font-size:20px;font-weight:700;font-family:var(--mono);color:${col}">${st.roi>=0?'+':''}${st.roi.toFixed(1)}%${warn}</div><div style="font-size:9px;color:var(--muted)">ROI</div></div>
+    </div>
+    <div style="text-align:center;margin-top:8px;font-size:11px;color:var(--dim)">Solde net : <b style="color:${col}">${st.net>=0?'+':''}${st.net.toFixed(2)}€</b> <span style="color:var(--muted)">(mise 1€/course)</span></div>
+  </div>`;
+}
+
+function renderSuivi(){
+  const el=document.getElementById('suivi-content'); if(!el) return;
+  if(!document.getElementById('sv-date').value){ document.getElementById('sv-date').value=new Date().toISOString().slice(0,10); }
+  const all=loadSuivi();
+  const valid=all.filter(r=>r.cote<2.5); // règle : cote <2,5
+  const lamb=valid.filter(r=>!r.vedette), ved=valid.filter(r=>r.vedette);
+  const stL=suiviStat(lamb), stV=suiviStat(ved);
+  const nOff=all.length-valid.length;
+
+  const target=150; const prog=Math.min(100, Math.round(stL.n/target*100));
+  let html = `<div style="margin-top:14px">${suiviStatCard('🎯 LAMBDA — la stratégie (cote &lt;2,5)', stL, true)}</div>`;
+  html += `<div style="margin-top:10px;margin-bottom:4px;font-size:10px;color:var(--muted)">Progression vers ${target} courses : ${stL.n}/${target}</div>
+    <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden"><div style="height:100%;width:${prog}%;background:var(--gold)"></div></div>`;
+  html += `<div style="margin-top:14px">${suiviStatCard('Contrôle — favori VEDETTE (cote &lt;2,5)', stV, false)}</div>`;
+
+  if(stL.n>=10){
+    const verdict = stL.roi>2 ? ['var(--green)','✅ Edge confirmé en aveugle — mais continue jusqu\'à 150.'] : (stL.roi>=-2 ? ['var(--orange)','≈ Break-even. Le backtest ne se confirme pas franchement.'] : ['var(--red)','❌ L\'edge ne survit pas hors échantillon. C\'était in-sample.']);
+    html += `<div class="card" style="margin-top:14px;border-left:3px solid ${verdict[0]}"><div style="font-size:12px;color:${verdict[0]};font-weight:600">${verdict[1]}</div></div>`;
+  }
+  if(stL.n>0 && stL.n<10){ html += `<div style="margin-top:12px;font-size:11px;color:var(--muted);font-style:italic">Encore trop peu de courses pour conclure (n&lt;10). Continue à logger.</div>`; }
+
+  // historique
+  const sorted=[...all].sort((a,b)=>(b.date||'').localeCompare(a.date||'')||b.id-a.id);
+  if(sorted.length){
+    html += `<div class="card" style="margin-top:14px"><div style="font-size:13px;font-weight:600;margin-bottom:10px">Historique (${all.length})${nOff?` · <span style="color:var(--muted);font-size:10px">${nOff} hors règle cote≥2,5 exclues des stats</span>`:''}</div>`;
+    html += sorted.map(r=>{
+      const tag=r.vedette?'<span style="color:var(--muted)">Vedette</span>':'<span style="color:var(--gold)">Lambda</span>';
+      const res=r.place?`<span style="color:var(--green)">Placé ${r.rapport.toFixed(2)}€</span>`:'<span style="color:var(--red)">Non placé</span>';
+      const off=r.cote>=2.5?' style="opacity:.45"':'';
+      return `<div${off} style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:11px;gap:8px">
+        <div style="flex:1"><b>${r.date}</b> ${r.label?'· '+r.label:''}<div style="color:var(--muted);font-size:10px">cote ${r.cote} · ${tag}</div></div>
+        <div style="text-align:right">${res}</div>
+        <button onclick="delSuivi(${r.id})" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0 4px">×</button>
+      </div>`;
+    }).join('');
+    html += `</div>`;
+  } else {
+    html += `<div style="margin-top:20px;text-align:center;color:var(--muted);font-size:12px">Aucune course enregistrée. Ajoute la première course qualifiante ci-dessus.</div>`;
+  }
+  el.innerHTML=html;
+}
 
 // ══════════════════════════════════════════════════════
 //  CALENDRIER
