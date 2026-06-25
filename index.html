@@ -508,6 +508,7 @@ function updateAnalyse() {
   // ── Types de paris (menu déroulant) ──
   const BET_OPTS = [
     ['C1_G','C1 gagnant'], ['C1_P','C1 placé'],
+    ['LAMB_P6','💎 Driver lambda · placé · cote<6'],
     ['C2_G','C2 gagnant'], ['C2_P','C2 placé'],
     ['C3_G','C3 gagnant'], ['C3_P','C3 placé'],
     ['CG_12','Couplé gagnant 1-2'], ['CP_12','Couplé placé 1-2'],
@@ -551,6 +552,14 @@ function updateAnalyse() {
     switch(key){
       case 'C1_G': return single(c1,'SIMPLE_GAGNANT', arr[0]===c1);
       case 'C1_P': return single(c1,'SIMPLE_PLACE', arr3.includes(c1));
+      case 'LAMB_P6': {
+        const c1cote = ((a.top3||[])[0]||{}).cote;
+        if (c1cote==null || c1cote>=6) return null;            // hors plage cote → ignorée
+        const h = (a.chevaux||[]).find(x=>x.numero===c1);
+        const isStar = h && (h.criteres||[]).includes('Driver top LeTrot');
+        if (isStar) return null;                                // driver vedette → ignorée
+        return single(c1,'SIMPLE_PLACE', arr3.includes(c1));    // lambda placé
+      }
       case 'C2_G': return single(c2,'SIMPLE_GAGNANT', c2!=null&&arr[0]===c2);
       case 'C2_P': return single(c2,'SIMPLE_PLACE', c2!=null&&arr3.includes(c2));
       case 'C3_G': return single(c3,'SIMPLE_GAGNANT', c3!=null&&arr[0]===c3);
