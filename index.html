@@ -1850,7 +1850,8 @@ function renderScan2Results() {
 
   // ── Écart par niveau de points (référence backtest) ──
   const _db=dbGet(); const _done=(_db.analyses||[]).filter(a=>a.statut==='complete');
-  const _chrono=[..._done].sort((a,b)=>parseDate(a.date)-parseDate(b.date));
+  const _pd = ds => { const m=(ds||'').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/); return m?new Date(+m[3],+m[2]-1,+m[1]).getTime():0; };
+  const _chrono=[..._done].sort((a,b)=>_pd(a.date)-_pd(b.date));
   const ecartLv={}; for(let k=2;k<=9;k++) ecartLv[k]={seq:[],cS:0,cN:0};
   _chrono.forEach(a=>{
     const c1=(a.top3||[])[0]; if(!c1||c1.score==null) return;
