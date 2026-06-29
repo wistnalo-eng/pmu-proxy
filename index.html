@@ -1848,6 +1848,36 @@ function renderScan2Results() {
   const medals=['🥇','🥈','🥉'];
   let h='';
 
+  // ── Écart par niveau de points (référence backtest) ──
+  const _db=dbGet(); const _done=(_db.analyses||[]).filter(a=>a.statut==='complete');
+  const _chrono=[..._done].sort((a,b)=>parseDate(a.date)-parseDate(b.date));
+  const ecartLv={}; for(let k=2;k<=9;k++) ecartLv[k]={seq:[],cS:0,cN:0};
+  _chrono.forEach(a=>{
+    const c1=(a.top3||[])[0]; if(!c1||c1.score==null) return;
+    const k=Math.round(c1.score); if(k<2||k>9) return;
+    const arr=(a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n)); if(!arr.length) return;
+    ecartLv[k].seq.push(arr.slice(0,3).includes(c1.numero));
+    if(c1.cote>0){ ecartLv[k].cS+=c1.cote; ecartLv[k].cN++; }
+  });
+  const ecart={};
+  for(let k=2;k<=9;k++){
+    const s=ecartLv[k].seq, n=s.length, places=s.filter(Boolean).length;
+    let runs=[],cur=0; s.forEach(p=>{ if(p){runs.push(cur);cur=0;} else cur++; });
+    const avg=runs.length?runs.reduce((x,y)=>x+y,0)/runs.length:0;
+    ecart[k]={n,taux:n?places/n:0,coteMoy:ecartLv[k].cN?ecartLv[k].cS/ecartLv[k].cN:0,avgEcart:avg,curEcart:cur,fire:(n>=20&&avg>0&&cur>=avg)};
+  }
+  const ecartBadge=k=>{ const e=ecart[k]; if(!e||!e.fire) return ''; return `<span title="Écart en cours ${e.curEcart} ≥ écart moyen ${e.avgEcart.toFixed(1)}" style="margin-left:5px;font-size:12px">⚠️</span>`; };
+  let ecRows=''; for(let k=9;k>=2;k--){ const e=ecart[k]; if(!e||!e.n) continue; const col=e.fire?'var(--orange)':'var(--muted)'; ecRows+=`<div style="display:grid;grid-template-columns:0.7fr 1fr 1fr 1fr 1.1fr;gap:5px;font-size:11px;text-align:center;padding:6px 0;border-bottom:1px solid var(--border);align-items:center"><div style="text-align:left;font-weight:700">${k} pts</div><div style="font-family:var(--mono)">${Math.round(e.taux*100)}%</div><div style="font-family:var(--mono)">${e.coteMoy.toFixed(2)}</div><div style="font-family:var(--mono)">${e.avgEcart.toFixed(1)}</div><div style="font-family:var(--mono);font-weight:700;color:${col}">${e.curEcart}${e.fire?' ⚠️':''}${e.n<20?' ·n'+e.n:''}</div></div>`; }
+  if(ecRows){
+    h+=`<div class="card" style="margin-bottom:20px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px">📍 Écart par niveau de points (C1)</div>
+      <div style="font-size:10px;color:var(--red);margin-bottom:8px;line-height:1.5">⚠️ « Jouer à l'écart » = sophisme du joueur. Les courses sont indépendantes : un écart dépassé ne rend PAS un placé plus probable. Indicateur descriptif, pas un signal de mise.</div>
+      <div style="display:grid;grid-template-columns:0.7fr 1fr 1fr 1fr 1.1fr;gap:5px;font-size:9px;color:var(--muted);font-weight:600;text-align:center;border-bottom:2px solid var(--border);padding-bottom:5px"><div style="text-align:left">Niveau</div><div>Réussite</div><div>Cote moy</div><div>Écart moy</div><div>Écart actuel</div></div>
+      ${ecRows}
+      <div style="font-size:9px;color:var(--muted);margin-top:8px;font-style:italic">Écart = nb de C1 consécutifs NON placés. Actuel ≥ moyen → ⚠️ (niveau « en retard »). Calculé sur le backtest chronologique.</div>
+    </div>`;
+  }
+
   for(const {course,scored,error} of S.e2Results){
     h+=`<div style="margin-bottom:24px">
       <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px">
@@ -1868,7 +1898,7 @@ function renderScan2Results() {
           <div style="width:28px;height:28px;border-radius:6px;background:${cols[i]}25;color:${cols[i]};display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:14px;margin:0 auto 5px">${num}</div>
           <div style="font-weight:700;font-size:11px;line-height:1.2;margin-bottom:2px">${p.nom||'—'}</div>
           <div style="font-size:10px;color:var(--muted);margin-bottom:4px">${p.driver||p.nomJockey||''}</div>
-          <div style="font-family:var(--mono);font-weight:700;font-size:16px;color:${cols[i]}">${p.total}</div>
+          <div style="font-family:var(--mono);font-weight:700;font-size:16px;color:${cols[i]}">${p.total}${i===0?ecartBadge(Math.round(p.total)):''}</div>
           <div style="font-size:9px;color:var(--muted)">pts</div>
         </div>`;
       });
@@ -1887,7 +1917,7 @@ function renderScan2Results() {
               <div style="font-size:10px;color:var(--muted)">${p.driver||p.nomJockey||''}${p.entraineur?' · '+p.entraineur:''}</div>
               <div class="pbar"><div class="pbar-fill" style="width:${Math.min(100,(p.total/9)*100)}%;background:${col}"></div></div>
             </div>
-            <div style="font-family:var(--mono);font-weight:700;font-size:16px;color:${col};flex-shrink:0">${p.total}<span style="font-size:9px;color:var(--muted)">pts</span></div>
+            <div style="font-family:var(--mono);font-weight:700;font-size:16px;color:${col};flex-shrink:0">${p.total}<span style="font-size:9px;color:var(--muted)">pts</span>${i===0?ecartBadge(Math.round(p.total)):''}</div>
             <span style="color:var(--muted);font-size:11px;margin-left:4px">▼</span>
           </div>
           <div class="cheval-pts hidden">
