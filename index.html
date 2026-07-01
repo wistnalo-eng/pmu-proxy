@@ -1063,8 +1063,10 @@ function updateAnalyse() {
   });
   _panel.sort((x,y)=>x.ts-y.ts);
   window.__PANEL=_panel;
-  if(!window.__PSTATE) window.__PSTATE={bet:'C1_P',fixe:false,pct:2,years:{'2022':1,'2023':1,'2024':1,'2025':1,'2026':1},vedette:1,lambda:1,cotes:{lt25:1,'25_4':1,'4_6':1,'6_10':1,gt10:1},parts:{'8_11':1,'12_14':1,'15p':1}};
-  if(!window.__PSTATE.bet) window.__PSTATE.bet='C1_P';
+  const _pb=(window.__PSTATE&&window.__PSTATE.bet)||'C1_P';
+  const _pf=(window.__PSTATE&&window.__PSTATE.fixe)||false;
+  const _pp=(window.__PSTATE&&window.__PSTATE.pct)||2;
+  window.__PSTATE={bet:_pb,fixe:_pf,pct:_pp,years:{'2022':1,'2023':1,'2024':1,'2025':1,'2026':1},vedette:1,lambda:1,cotes:{lt25:1,'25_4':1,'4_6':1,'6_10':1,gt10:1},parts:{'8_11':1,'12_14':1,'15p':1}};
 
   el.innerHTML = `
     <div id="panel-root"></div>
@@ -1284,7 +1286,7 @@ function renderPanel(){
       <div style="background:var(--sf);border-radius:8px;padding:11px"><div style="font-family:var(--mono);font-size:19px;font-weight:700">${rapMoy.toFixed(2)}€</div><div style="font-size:9px;color:var(--muted)">rapport moy</div></div>
       <div style="background:var(--sf);border-radius:8px;padding:11px;border:1px solid var(--gold)"><div style="font-family:var(--mono);font-size:19px;font-weight:700;color:${roi>=0?'var(--green)':'var(--red)'}">${roi>=0?'+':''}${roi.toFixed(1)}%</div><div style="font-size:9px;color:var(--muted)">ROI flat</div></div>
     </div>
-    <div style="font-size:11px;color:var(--dim);text-align:center;margin-bottom:2px">${played} paris <span style="color:var(--muted)">(base ${P.length})</span> · ${cap0}€ → <b style="color:${cap>=cap0?'var(--green)':'var(--red)'}">${Math.round(cap)}€</b> (${growth>=0?'+':''}${growth.toFixed(0)}%) · DD max ${maxdd.toFixed(0)}%</div>
+    <div style="font-size:11px;color:var(--dim);text-align:center;margin-bottom:2px">${played} paris · ${rows.length} filtré · base ${P.length} · ${cap0}€ → <b style="color:${cap>=cap0?'var(--green)':'var(--red)'}">${Math.round(cap)}€</b> (${growth>=0?'+':''}${growth.toFixed(0)}%) · DD ${maxdd.toFixed(0)}%</div>
     ${svg}
   </div>`;
 }
