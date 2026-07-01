@@ -1045,25 +1045,26 @@ function updateAnalyse() {
   const diagHead=`<div></div>`+diagYears.map(y=>`<div style="text-align:center;font-weight:700;color:var(--gold);font-size:12px">${y}</div>`).join('');
   const diagRow=obj=>diagYears.map(yr=>{ const d=obj[yr]; if(!d||!d.n) return '<div style="text-align:center;color:var(--border);font-family:var(--mono)">—</div>'; const roi=((d.gain-d.n)/d.n)*100; const col=roi>3?'var(--green)':(roi>=0?'var(--orange)':'var(--red)'); return `<div style="text-align:center"><div style="font-family:var(--mono);font-weight:700;font-size:13px;color:${col}">${roi>=0?'+':''}${roi.toFixed(0)}%</div><div style="font-size:9px;color:var(--muted)">${Math.round(d.pl/d.n*100)}%·${d.n}</div></div>`; }).join('');
 
-  // ── Données du tableau de bord unifié (C1 placé, 5-7 pts, toutes cotes) ──
+  // ── Données du tableau de bord unifié (multi-paris, 5-7 pts, toutes cotes) ──
+  const PBETS=['C1_G','C2_G','C3_G','C1_P','C2_P','C3_P','CG_12','CG_13','CG_23','CP_12','CP_13','CP_23'];
   const _panel=[];
   done.forEach(a=>{
     const c1=(a.top3||[])[0]; if(!c1||c1.score==null) return;
     const scp=Math.round(c1.score); if(scp<5||scp>7) return;
     const cote=c1.cote; if(!cote||cote<=0) return;
     const arr=(a.arrivee||'').split('-').map(n=>parseInt(n)).filter(n=>!isNaN(n)); if(!arr.length) return;
-    const placed=arr.slice(0,3).includes(c1.numero);
-    const rap=placed?(lireRapport(a,'SIMPLE_PLACE',String(c1.numero))||0):0;
     const ym=(a.date||'').match(/\/(\d{4})$/); const yr=ym?ym[1]:'?';
     const star=critOf(a,c1.numero).includes('Driver top LeTrot');
     const fs=a.partants||(a.chevaux||[]).length||0;
     let cb; if(cote<2.5)cb='lt25'; else if(cote<4)cb='25_4'; else if(cote<6)cb='4_6'; else if(cote<10)cb='6_10'; else cb='gt10';
     let pb; if(fs<=11)pb='8_11'; else if(fs<=14)pb='12_14'; else pb='15p';
-    _panel.push({ts:parseDate(a.date),yr,star,cb,pb,placed,rap});
+    const b={}; PBETS.forEach(k=>{ b[k]=betMult(a,k); });
+    _panel.push({ts:parseDate(a.date),yr,star,cb,pb,b});
   });
   _panel.sort((x,y)=>x.ts-y.ts);
   window.__PANEL=_panel;
-  if(!window.__PSTATE) window.__PSTATE={fixe:false,pct:2,years:{'2022':1,'2023':1,'2024':1,'2025':1,'2026':1},vedette:1,lambda:1,cotes:{lt25:1,'25_4':1,'4_6':1,'6_10':1,gt10:1},parts:{'8_11':1,'12_14':1,'15p':1}};
+  if(!window.__PSTATE) window.__PSTATE={bet:'C1_P',fixe:false,pct:2,years:{'2022':1,'2023':1,'2024':1,'2025':1,'2026':1},vedette:1,lambda:1,cotes:{lt25:1,'25_4':1,'4_6':1,'6_10':1,gt10:1},parts:{'8_11':1,'12_14':1,'15p':1}};
+  if(!window.__PSTATE.bet) window.__PSTATE.bet='C1_P';
 
   el.innerHTML = `
     <div id="panel-root"></div>
@@ -1220,10 +1221,12 @@ function pTogK(key){ const S=window.__PSTATE; if(!S)return; S[key]=S[key]?0:1; r
 function pAllYears(){ const S=window.__PSTATE; if(!S)return; const YS=['2022','2023','2024','2025','2026']; const all=YS.every(y=>S.years[y]); YS.forEach(y=>S.years[y]=all?0:1); renderPanel(); }
 function pSetFixe(v){ if(!window.__PSTATE)return; window.__PSTATE.fixe=v; renderPanel(); }
 function pSetPct(v){ if(!window.__PSTATE)return; window.__PSTATE.pct=v; renderPanel(); }
+function pSetBet(v){ if(!window.__PSTATE)return; window.__PSTATE.bet=v; renderPanel(); }
 
 function renderPanel(){
   const root=document.getElementById('panel-root'); if(!root||!window.__PANEL||!window.__PSTATE) return;
   const S=window.__PSTATE, P=window.__PANEL;
+  const bk=S.bet||'C1_P';
   const rows=P.filter(r=>{
     if(!S.years[r.yr]) return false;
     if(r.star && !S.vedette) return false;
@@ -1232,22 +1235,29 @@ function renderPanel(){
     if(!S.parts[r.pb]) return false;
     return true;
   });
-  const n=rows.length, places=rows.filter(r=>r.placed).length;
-  const gain=rows.reduce((s,r)=>s+(r.placed?r.rap:0),0);
-  const taux=n?Math.round(places/n*100):0;
-  const rapMoy=places?gain/places:0;
-  const roi=n?((gain-n)/n*100):0;
-  // Trajectoire bankroll
+  // Stats du pari sélectionné (v = net : rap-1 si gagné, -1 si perdu, null si non jouable)
+  let played=0, wins=0, sumNet=0, sumRapWin=0;
   const cap0=1000, pct=S.pct/100; let cap=cap0; const traj=[cap0];
-  rows.forEach(r=>{ const net=r.placed?(r.rap-1):-1; const stake=S.fixe?cap0*pct:cap*pct; cap+=stake*net; if(cap<0)cap=0; traj.push(cap); });
+  rows.forEach(r=>{
+    const v=r.b?r.b[bk]:null;
+    if(v===null||v===undefined) return;
+    played++;
+    if(v!==-1){ wins++; sumRapWin+=(v+1); }
+    sumNet+=v;
+    const stake=S.fixe?cap0*pct:cap*pct; cap+=stake*v; if(cap<0)cap=0; traj.push(cap);
+  });
+  const taux=played?Math.round(wins/played*100):0;
+  const rapMoy=wins?sumRapWin/wins:0;
+  const roi=played?(sumNet/played*100):0;
   const growth=(cap-cap0)/cap0*100;
   let peak=cap0,maxdd=0; traj.forEach(v=>{ if(v>peak)peak=v; const dd=peak>0?(peak-v)/peak*100:0; if(dd>maxdd)maxdd=dd; });
-  // Graphe SVG
   const W=320,H=110, mn=Math.min(...traj), mx=Math.max(...traj), rng=(mx-mn)||1;
   const pts=traj.map((v,i)=>`${(i/(traj.length-1||1)*W).toFixed(1)},${(H-(v-mn)/rng*H).toFixed(1)}`).join(' ');
   const chartCol=cap>=cap0?'#2fbf71':'#e5484d';
-  const svg=n?`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:120px;margin-top:6px" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${chartCol}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`:'<div style="text-align:center;color:var(--muted);font-size:12px;padding:30px 0">Aucune course avec ces filtres</div>';
+  const svg=played?`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:120px;margin-top:6px" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${chartCol}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`:'<div style="text-align:center;color:var(--muted);font-size:12px;padding:30px 0">Aucun pari jouable avec ces filtres</div>';
 
+  const betLabels={C1_G:'C1 gagnant',C2_G:'C2 gagnant',C3_G:'C3 gagnant',C1_P:'C1 placé',C2_P:'C2 placé',C3_P:'C3 placé',CG_12:'Couplé gagnant 1-2',CG_13:'Couplé gagnant 1-3',CG_23:'Couplé gagnant 2-3',CP_12:'Couplé placé 1-2',CP_13:'Couplé placé 1-3',CP_23:'Couplé placé 2-3'};
+  const betSel=`<select onchange="pSetBet(this.value)" style="width:100%;padding:10px;font-size:14px;border-radius:8px;border:1px solid var(--border);background:var(--sf);color:var(--text);-webkit-appearance:none;appearance:none">${Object.keys(betLabels).map(k=>`<option value="${k}"${k===bk?' selected':''}>${betLabels[k]}</option>`).join('')}</select>`;
   const YS=['2022','2023','2024','2025','2026'];
   const yTog=YS.map(y=>pPill(S.years[y],y,`pTog('years','${y}')`)).join('')+pPill(YS.every(y=>S.years[y]),'Tous',`pAllYears()`);
   const dTog=pPill(S.vedette,'Vedette',`pTogK('vedette')`)+pPill(S.lambda,'Lambda',`pTogK('lambda')`);
@@ -1261,10 +1271,11 @@ function renderPanel(){
 
   root.innerHTML=`<div class="card">
     <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:4px">🎛️ Tableau de bord</div>
-    <div style="font-size:10px;color:var(--muted);margin-bottom:6px">C1 placé · 5-7 pts · filtres en temps réel</div>
+    <div style="font-size:10px;color:var(--muted);margin-bottom:6px">5-7 pts · filtres en temps réel</div>
+    <div style="${lbl}">TYPE DE PARI</div>${betSel}
     <div style="${lbl}">ANNÉES</div><div>${yTog}</div>
-    <div style="${lbl}">DRIVER</div><div>${dTog}</div>
-    <div style="${lbl}">COTE GAGNANT</div><div>${cTog}</div>
+    <div style="${lbl}">DRIVER (du C1)</div><div>${dTog}</div>
+    <div style="${lbl}">COTE GAGNANT (du C1)</div><div>${cTog}</div>
     <div style="${lbl}">PARTANTS</div><div>${pTog2}</div>
     <div style="${lbl}">SYSTÈME DE MISE</div><div>${sTog}</div>
     <div style="margin-top:4px">${pctTog}</div>
@@ -1273,7 +1284,7 @@ function renderPanel(){
       <div style="background:var(--sf);border-radius:8px;padding:11px"><div style="font-family:var(--mono);font-size:19px;font-weight:700">${rapMoy.toFixed(2)}€</div><div style="font-size:9px;color:var(--muted)">rapport moy</div></div>
       <div style="background:var(--sf);border-radius:8px;padding:11px;border:1px solid var(--gold)"><div style="font-family:var(--mono);font-size:19px;font-weight:700;color:${roi>=0?'var(--green)':'var(--red)'}">${roi>=0?'+':''}${roi.toFixed(1)}%</div><div style="font-size:9px;color:var(--muted)">ROI flat</div></div>
     </div>
-    <div style="font-size:11px;color:var(--dim);text-align:center;margin-bottom:2px">${n} courses · ${cap0}€ → <b style="color:${cap>=cap0?'var(--green)':'var(--red)'}">${Math.round(cap)}€</b> (${growth>=0?'+':''}${growth.toFixed(0)}%) · DD max ${maxdd.toFixed(0)}%</div>
+    <div style="font-size:11px;color:var(--dim);text-align:center;margin-bottom:2px">${played} paris <span style="color:var(--muted)">(base ${P.length})</span> · ${cap0}€ → <b style="color:${cap>=cap0?'var(--green)':'var(--red)'}">${Math.round(cap)}€</b> (${growth>=0?'+':''}${growth.toFixed(0)}%) · DD max ${maxdd.toFixed(0)}%</div>
     ${svg}
   </div>`;
 }
